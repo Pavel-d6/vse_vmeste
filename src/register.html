@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<main>
+    <div class="profile-container" style="max-width: 600px; margin: 2rem auto; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h1 style="font-size: 2rem; margin-bottom: 1.5rem; color: #2c3e50; text-align: center;">Регистрация</h1>
+
+        <form method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="username" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #2c3e50;">Имя пользователя</label>
+                <input 
+                    type="text" 
+                    name="username" 
+                    id="username" 
+                    required
+                    style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; width: 100%; box-sizing: border-box;"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #2c3e50;">Email (необязательно)</label>
+                <input 
+                    type="email" 
+                    name="email" 
+                    id="email"
+                    style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; width: 100%; box-sizing: border-box;"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #2c3e50;">Пароль</label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    id="password" 
+                    required
+                    style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; width: 100%; box-sizing: border-box;"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password2" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #2c3e50;">Подтверждение пароля</label>
+                <input 
+                    type="password" 
+                    name="password2" 
+                    id="password2" 
+                    required
+                    style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; width: 100%; box-sizing: border-box;"
+                >
+            </div>
+
+            <button 
+                type="submit" 
+                class="donate-btn"
+                style="background: linear-gradient(135deg, #3498db 0%, #8e44ad 100%); color: white; border: none; padding: 0.9rem 1.2rem; width: 100%; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; font-weight: 500; font-size: 1rem; margin-top: 1rem;"
+            >
+                Зарегистрироваться
+            </button>
+        </form>
+
+        <div style="margin-top: 1.5rem; text-align: center;">
+            <p style="color: #7f8c8d;">
+                Уже есть аккаунт? 
+                <a 
+                    href="{% url 'login' %}" 
+                    class="nav-link"
+                    style="text-decoration: none; color: #3498db; font-weight: 500;"
+                >
+                    Войти
+                </a>
+            </p>
+        </div>
+    </div>
+</main>
+{% endblock %}

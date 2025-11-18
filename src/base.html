@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VSE_VMESTE{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <link rel="icon" href="{% static 'images/favicon.png' %}" type="image/x-icon">
+    {% block extrahead %}{% endblock %}
+</head>
+<body>
+    <div class="content-wrapper">
+        <!-- Отображение сообщений Django -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="success-message {% if message.tags %}{{ message.tags }}-message{% endif %} show" style="margin: 1rem auto; max-width: 600px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </div>
+    <script src="{% static 'scripts.js' %}" defer></script>
+    {% block extrabody %}{% endblock %}
+</body>
+</html>

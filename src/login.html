@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<main>
+    <div class="funds-title">
+        <div class="hero">
+            <h1>Вход в аккаунт</h1>
+            <p>Пожалуйста, введите свои данные, чтобы войти в систему</p>
+        </div>
+    </div>
+
+    <div class="funds-grid" style="max-width: 500px; margin: 0 auto;">
+        <div class="fund-card">
+            <div class="fund-content">
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="username" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #2c3e50;">Имя пользователя</label>
+                        <input 
+                            type="text" 
+                            name="username" 
+                            id="username" 
+                            required
+                            style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; width: 100%; box-sizing: border-box;"
+                        >
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #2c3e50;">Пароль</label>
+                        <input 
+                            type="password" 
+                            name="password" 
+                            id="password" 
+                            required
+                            style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; width: 100%; box-sizing: border-box;"
+                        >
+                    </div>
+
+                    <button type="submit" class="donate-btn">Войти</button>
+                </form>
+
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <p style="color: #7f8c8d;">
+                        Нет аккаунта? 
+                        <a href="{% url 'register' %}" class="nav-link">Зарегистрироваться</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
