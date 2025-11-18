@@ -328,54 +328,40 @@ class CharityApp {
 
     // Форма создания заявки
     showCreateRequestForm(coords = null) {
+        const coordsInfo = coords ? 
+            `<p style="color: #28a745; margin-bottom: 1rem;">📍 Координаты выбраны: ${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</p>` : 
+            '<p style="color: #666; margin-bottom: 1rem;">💡 Совет: кликните на карте, чтобы выбрать место</p>';
+        
         const formHtml = `
             <h3>✋ Создать заявку о помощи</h3>
-            <form onsubmit="app.submitHelpRequest(event)" id="requestForm">
-                <input type="text" name="title" placeholder="Заголовок заявки *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem;">
-                <textarea name="description" placeholder="Описание потребности *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; height: 100px;"></textarea>
+            ${coordsInfo}
+            <form onsubmit="app.submitHelpRequest(event, ${coords ? `[${coords[0]}, ${coords[1]}]` : 'null'})">
+                <input type="text" name="title" placeholder="Заголовок заявки *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <textarea name="description" placeholder="Описание потребности *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; height: 100px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
                 
                 <div style="display: flex; gap: 1rem; margin: 0.5rem 0;">
-                    <select name="category" required style="flex: 1; padding: 0.5rem;">
+                    <select name="category" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                         <option value="">Категория *</option>
                         <option value="food">🍎 Еда</option>
                         <option value="clothes">👕 Одежда</option>
                         <option value="medicine">💊 Лекарства</option>
-                        <option value="household">🏠 Хозтовары</option>
-                        <option value="other">❔ Другое</option>
                     </select>
                     
-                    <select name="urgency" required style="flex: 1; padding: 0.5rem;">
+                    <select name="urgency" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                         <option value="">Срочность *</option>
                         <option value="low">📗 Не срочно</option>
-                        <option value="medium">📐 Средняя</option>
+                        <option value="medium">📘 Средняя</option>
                         <option value="high">📙 Срочно</option>
                         <option value="critical">📕 Очень срочно</option>
                     </select>
                 </div>
                 
-                <!-- АДРЕС С РАБОЧИМ YANDEX SUGGEST -->
-                <div style="margin: 0.5rem 0;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">📍 Адрес *</label>
-                    <input type="text" 
-                           id="address-input" 
-                           placeholder="Введите адрес..." 
-                           required 
-                           style="width: 100%; padding: 0.8rem; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;"
-                           autocomplete="off">
-                    <input type="hidden" id="latitude" name="latitude" value="${coords ? coords[0] : ''}">
-                    <input type="hidden" id="longitude" name="longitude" value="${coords ? coords[1] : ''}">
-                    <input type="hidden" id="full-address" name="address">
-                    <p style="font-size: 0.8rem; color: #666; margin: 0.5rem 0 0 0;">
-                        Начните вводить адрес - появятся подсказки от Яндекс Карт
-                    </p>
-                </div>
+                <input type="text" name="address" placeholder="Адрес *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                 
                 <div style="display: flex; gap: 1rem; margin: 0.5rem 0;">
-                    <input type="text" name="contact_name" placeholder="Ваше имя *" required style="flex: 1; padding: 0.5rem;">
-                    <input type="tel" name="contact_phone" placeholder="Телефон *" required style="flex: 1; padding: 0.5rem;">
+                    <input type="text" name="contact_name" placeholder="Ваше имя *" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="tel" name="contact_phone" placeholder="Телефон *" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                 </div>
-                
-                <input type="email" name="contact_email" placeholder="Email (необязательно)" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem;">
                 
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                     <button type="button" class="btn-secondary" onclick="app.hideModal()">Отмена</button>
@@ -385,187 +371,60 @@ class CharityApp {
         `;
         
         this.showModal('Создать заявку', formHtml);
-        
-        // Инициализируем Яндекс Suggest
-        setTimeout(() => this.initYandexSuggest(), 100);
-    }
-
-    // Инициализация Яндекс Suggest
-    initYandexSuggest() {
-        const addressInput = document.getElementById('address-input');
-        
-        if (!addressInput) {
-            console.log("❌ Поле адреса не найдено");
-            return;
-        }
-        
-        // Проверяем что Яндекс API загрузилось
-        if (typeof ymaps === 'undefined') {
-            console.log("❌ Яндекс API не загрузилось");
-            this.showSimpleAutocomplete(); // Fallback
-            return;
-        }
-        
-        console.log("✅ Яндекс API загружено, инициализируем Suggest");
-        
-        // Ждем полной загрузки Яндекс
-        ymaps.ready(() => {
-            try {
-                // Создаем SuggestView
-                const suggestView = new ymaps.SuggestView('address-input', {
-                    results: 5,
-                    width: '100%'
-                });
-                
-                // Обрабатываем выбор подсказки
-                suggestView.events.add('select', (e) => {
-                    const selectedAddress = e.get('item').value;
-                    console.log("📍 Выбран адрес:", selectedAddress);
-                    
-                    // Устанавливаем выбранный адрес
-                    addressInput.value = selectedAddress;
-                    
-                    // Геокодируем для получения координат
-                    this.geocodeAddress(selectedAddress);
-                });
-                
-                console.log("✅ Яндекс Suggest инициализирован");
-                
-            } catch (error) {
-                console.error("❌ Ошибка инициализации Suggest:", error);
-                this.showSimpleAutocomplete(); // Fallback
-            }
-        });
-    }
-
-    // Геокодирование адреса
-    geocodeAddress(address) {
-        if (typeof ymaps === 'undefined') return;
-        
-        console.log("🗺️ Геокодируем адрес:", address);
-        
-        ymaps.geocode(address)
-            .then((res) => {
-                const firstGeoObject = res.geoObjects.get(0);
-                
-                if (firstGeoObject) {
-                    const coords = firstGeoObject.geometry.getCoordinates();
-                    const fullAddress = firstGeoObject.getAddressLine();
-                    
-                    console.log("✅ Координаты найдены:", coords);
-                    console.log("✅ Полный адрес:", fullAddress);
-                    
-                    // Сохраняем данные
-                    document.getElementById('full-address').value = fullAddress;
-                    document.getElementById('latitude').value = coords[0];
-                    document.getElementById('longitude').value = coords[1];
-                    
-                    // Показываем подтверждение
-                    this.showAddressConfirmation(fullAddress);
-                    
-                } else {
-                    console.log("❌ Адрес не найден");
-                    this.useFallbackCoords(address);
-                }
-            })
-            .catch((error) => {
-                console.error("❌ Ошибка геокодирования:", error);
-                this.useFallbackCoords(address);
-            });
-    }
-
-    // Показываем подтверждение адреса
-    showAddressConfirmation(address) {
-        const addressInput = document.getElementById('address-input');
-        
-        // Подсвечиваем поле
-        addressInput.style.borderColor = '#27ae60';
-        addressInput.style.background = '#f8fff9';
-        
-        // Показываем сообщение
-        let confirmation = document.getElementById('address-confirmation');
-        if (!confirmation) {
-            confirmation = document.createElement('div');
-            confirmation.id = 'address-confirmation';
-            confirmation.style.cssText = 'background: #d4edda; color: #155724; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.9rem;';
-            addressInput.parentNode.appendChild(confirmation);
-        }
-        
-        confirmation.innerHTML = `✅ Адрес подтвержден: ${address}`;
-    }
-
-    // Fallback - случайные координаты
-    useFallbackCoords(address) {
-        console.log("📍 Используем резервные координаты для:", address);
-        
-        document.getElementById('full-address').value = address;
-        
-        // Случайные координаты в центре России
-        const coords = [
-            55.7558 + (Math.random() - 0.5) * 10,
-            37.6173 + (Math.random() - 0.5) * 20
-        ];
-        
-        document.getElementById('latitude').value = coords[0];
-        document.getElementById('longitude').value = coords[1];
-        
-        console.log("📍 Резервные координаты:", coords);
-    }
-
-    // Простой fallback автокомплит
-    showSimpleAutocomplete() {
-        console.log("🔄 Используем простой автокомплит");
-        
-        const addressInput = document.getElementById('address-input');
-        if (!addressInput) return;
-        
-        // Простые подсказки
-        addressInput.setAttribute('list', 'simple-addresses');
-        
-        const datalist = document.createElement('datalist');
-        datalist.id = 'simple-addresses';
-        datalist.innerHTML = `
-            <option value="Москва, Красная площадь">
-            <option value="Москва, ул. Тверская">
-            <option value="Москва, Арбат">
-            <option value="Санкт-Петербург, Невский проспект">
-            <option value="Санкт-Петербург, Дворцовая площадь">
-            <option value="Новосибирск, ул. Ленина">
-            <option value="Екатеринбург, пр. Ленина">
-            <option value="Казань, ул. Баумана">
-        `;
-        
-        addressInput.parentNode.appendChild(datalist);
     }
 
     // Отправка заявки
-    async submitHelpRequest(event) {
+    async submitHelpRequest(event, coords = null) {
         event.preventDefault();
         const formData = new FormData(event.target);
         const data = Object.fromEntries(formData.entries());
         
-        console.log("📤 Отправляем заявку с адресом:", data.address);
-        console.log("📍 Координаты:", data.latitude, data.longitude);
+        // Используем координаты с карты или генерируем случайные
+        if (coords) {
+            data.latitude = coords[0];
+            data.longitude = coords[1];
+        } else {
+            // Для демо - случайные координаты в Москве
+            data.latitude = 55.7558 + (Math.random() - 0.5) * 0.1;
+            data.longitude = 37.6173 + (Math.random() - 0.5) * 0.1;
+        }
+        
+        // Добавляем ID и timestamp
+        data.id = Date.now();
+        data.created_at = new Date().toISOString();
         
         try {
-            const response = await fetch(`${this.backendUrl}/help-requests/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
+            // Сначала сохраняем локально
+            await this.saveRequest(data);
             
-            if (response.ok) {
-                this.showModal('Успех', '✅ Заявка успешно создана!');
-                this.hideModal();
-                setTimeout(() => this.loadHelpRequests(), 1000);
-            } else {
-                throw new Error('Ошибка при создании заявки');
+            // Затем пытаемся отправить на сервер
+            try {
+                const response = await fetch(`${this.backendUrl}/help-requests/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    console.log('✅ Заявка отправлена на сервер');
+                }
+            } catch (serverError) {
+                console.warn('⚠️ Сервер недоступен, заявка сохранена локально:', serverError);
             }
+            
+            this.showModal('Успех', '✅ Заявка успешно создана и сохранена!');
+            setTimeout(() => this.hideModal(), 2000);
+            
+            // Перезагружаем заявки
+            await this.loadSavedRequests();
+            this.updateMapMarkers();
+            this.updateStats();
+            
         } catch (error) {
-            console.error("❌ Ошибка:", error);
-            this.showModal('Ошибка', '❌ Не удалось создать заявку');
+            console.error('Ошибка сохранения заявки:', error);
+            this.showModal('Ошибка', '❌ Не удалось создать заявку: ' + error.message);
         }
     }
 
@@ -639,14 +498,14 @@ class CharityApp {
             
             if (response.ok) {
                 this.showModal('Успех', '✅ Фонд успешно добавлен!');
-                this.hideModal();
+                setTimeout(() => this.hideModal(), 2000);
+                // Перезагружаем фонды
                 this.loadFunds();
             } else {
                 throw new Error('Ошибка при добавлении фонда');
             }
         } catch (error) {
-            console.error("❌ Ошибка:", error);
-            this.showModal('Ошибка', '❌ Не удалось добавить фонд');
+            this.showModal('Ошибка', '❌ Не удалось добавить фонд: ' + error.message);
         }
     }
 
@@ -754,13 +613,6 @@ class CharityApp {
                 <p><strong>Фондов на сервере:</strong> ${fundsCount}</p>
             </div>
         `);
-    }
-
-    // Загрузка заявок
-    async loadHelpRequests() {
-        console.log('📥 Загружаем заявки...');
-        await this.loadSavedRequests();
-        this.updateMapMarkers();
     }
 }
 
