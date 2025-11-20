@@ -1,90 +1,172 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Все вместе - Карта взаимопомощи</title>
-<link rel="stylesheet" href="styles.css">
-<!-- Добавьте тип загрузки как defer -->
-<script src="https://api-maps.yandex.ru/2.1/?apikey=f1b67a21-0ce5-4416-857a-838e9778a629&lang=ru_RU" type="text/javascript"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Все вместе - Карта взаимопомощи</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=f1b67a21-0ce5-4416-857a-838e9778a629&lang=ru_RU" type="text/javascript"></script>
 </head>
 <body>
-<div class="app">
-<!-- Шапка -->
-<header class="header">
-<div class="container">
-<div class="logo">Все вместе ♥</div>
-<nav class="nav">
-<button class="nav-btn active" data-page="map">Карта помощи</button>
-<button class="nav-btn" data-page="funds">Фонды</button>
-<button class="nav-btn" data-page="about">О проекте</button>
-</nav>
-</div>
-</header>
+    <div class="app">
+        <!-- Шапка -->
+        <header class="header">
+            <div class="container">
+                <div class="logo">Все вместе ♥</div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-page="map">Карта помощи</button>
+                    <button class="nav-btn" data-page="funds">Фонды</button>
+                    <button class="nav-btn" data-page="about">О проекте</button>
+                </nav>
+                <!-- БЛОК АВТОРИЗАЦИИ -->
+                <div class="auth-section">
+                    <div id="auth-buttons">
+                        <button class="btn-auth" onclick="showAuthModal('login')">Войти</button>
+                        <button class="btn-auth btn-primary" onclick="showAuthModal('register')">Регистрация</button>
+                    </div>
+                    <div id="user-profile" style="display: none;">
+                        <span id="username-display" style="margin-right: 10px;"></span>
+                        <button class="btn-auth" onclick="showProfileModal()">Личный кабинет</button>
+                        <button class="btn-auth" onclick="logout()">Выйти</button>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-<!-- Основной контент -->
-<main class="main">
-<!-- Страница карты -->
-<section id="map-page" class="page active">
-<div class="container">
-<div class="map-controls">
-<button id="create-request-btn" class="btn-primary">➕ Создать заявку</button>
-<div class="filters">
-<select id="category-filter">
-<option value="">Все категории</option>
-<option value="food">🍎 Еда</option>
-<option value="clothes">👕 Одежда</option>
-<option value="medicine">💊 Лекарства</option>
-</select>
-<select id="urgency-filter">
-<option value="">Любая срочность</option>
-<option value="critical">📕 Очень срочно</option>
-<option value="high">📙 Срочно</option>
-</select>
-</div>
-</div>
-<div class="map-container">
-<div id="map" style="width: 100%; height: 500px;">
-<p>Карта загружается...</p>
-</div>
-</div>
-<div class="stats">
-<span id="requests-count">Заявок: 0</span>
-<button id="test-btn" class="btn-secondary">Тест кнопка</button>
-</div>
-</div>
-</section>
+        <!-- Основной контент -->
+        <main class="main">
+            <!-- Страница карты -->
+            <section id="map-page" class="page active">
+                <div class="container">
+                    <div class="map-controls">
+                        <button id="create-request-btn" class="btn-primary" onclick="checkAuthBeforeCreate()">
+                            ➕ Создать заявку
+                        </button>
+                        <div class="filters">
+                            <select id="category-filter">
+                                <option value="">Все категории</option>
+                                <option value="food">🍎 Еда</option>
+                                <option value="clothes">👕 Одежда</option>
+                                <option value="medicine">💊 Лекарства</option>
+                                <option value="household">🏠 Хозтовары</option>
+                                <option value="other">❔ Другое</option>
+                            </select>
+                            <select id="urgency-filter">
+                                <option value="">Любая срочность</option>
+                                <option value="critical">📕 Очень срочно</option>
+                                <option value="high">📙 Срочно</option>
+                                <option value="medium">📐 Средняя</option>
+                                <option value="low">📗 Не срочно</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="map-container">
+                        <div id="map" style="width: 100%; height: 500px;">
+                            <p>Карта загружается...</p>
+                        </div>
+                    </div>
+                    <div class="stats">
+                        <span id="requests-count">Заявок: 0</span>
+                    </div>
+                </div>
+            </section>
 
-<!-- Страница фондов -->
-<section id="funds-page" class="page">
-<div class="container">
-<h1>Благотворительные фонды</h1>
-<button id="add-fund-btn" class="btn-primary">Добавить фонд</button>
-<div id="funds-list" class="funds-grid">
-<!-- Фонды появятся здесь -->
-</div>
-</div>
-</section>
+            <!-- Страница фондов -->
+            <section id="funds-page" class="page">
+                <div class="container">
+                    <h1>Благотворительные фонды</h1>
+                    <button id="add-fund-btn" class="btn-primary" style="margin-top: 1rem;">➕ Добавить фонд</button>
+                    <div id="funds-list" class="funds-grid">
+                        <!-- Фонды появятся здесь -->
+                    </div>
+                </div>
+            </section>
 
-<!-- Страница о проекте -->
-<section id="about-page" class="page">
-<div class="container">
-<h1>О проекте</h1>
-<p>Платформа для взаимопомощи между людьми.</p>
-</div>
-</section>
-</main>
-</div>
+            <!-- Страница о проекте -->
+            <section id="about-page" class="page">
+                <div class="container">
+                    <h1>О проекте</h1>
+                    <div class="about-content">
+                        <p><strong>Все вместе</strong> - это платформа для взаимопомощи между людьми.</p>
+                        <p>Здесь вы можете:</p>
+                        <ul>
+                            <li>📍 Создать заявку о помощи</li>
+                            <li>🗺️ Найти заявки рядом с вами</li>
+                            <li>🤝 Помочь другим людям</li>
+                            <li>🏛️ Узнать о благотворительных фондах</li>
+                        </ul>
+                        <h3 style="margin-top: 2rem;">Как это работает?</h3>
+                        <p>1. Зарегистрируйтесь в системе</p>
+                        <p>2. Создайте заявку с описанием нужной помощи</p>
+                        <p>3. Укажите точный адрес для отображения на карте</p>
+                        <p>4. Другие пользователи увидят вашу заявку и смогут помочь</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
 
-<!-- Модальное окно -->
-<div id="modal" class="modal" style="display: none;">
-<div class="modal-content">
-<h3 id="modal-title">Заголовок</h3>
-<div id="modal-body">Содержимое</div>
-<button id="modal-close" class="btn-secondary">Закрыть</button>
-</div>
-</div>
+    <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ -->
+    <div id="auth-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeAuthModal()">&times;</span>
+            <h3 id="auth-modal-title">Вход</h3>
+            <div id="auth-modal-body">
+                <div id="auth-form">
+                    <div id="login-form">
+                        <div class="form-group">
+                            <label>Имя пользователя:</label>
+                            <input type="text" id="login-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Пароль:</label>
+                            <input type="password" id="login-password" required>
+                        </div>
+                    </div>
+                    <div id="register-form" style="display: none;">
+                        <div class="form-group">
+                            <label>Имя пользователя:</label>
+                            <input type="text" id="register-username">
+                        </div>
+                        <div class="form-group">
+                            <label>Email:</label>
+                            <input type="email" id="register-email">
+                        </div>
+                        <div class="form-group">
+                            <label>Пароль:</label>
+                            <input type="password" id="register-password">
+                        </div>
+                        <div class="form-group">
+                            <label>Повторите пароль:</label>
+                            <input type="password" id="register-password2">
+                        </div>
+                    </div>
+                    <button type="button" class="btn-primary" id="auth-submit-btn">Войти</button>
+                </div>
+                <div id="auth-error" style="color: red; margin-top: 10px; display: none;"></div>
+            </div>
+            <div class="auth-switch">
+                <button type="button" id="switch-to-register" onclick="switchAuthForm('register')">Нет аккаунта? Зарегистрироваться</button>
+                <button type="button" id="switch-to-login" onclick="switchAuthForm('login')" style="display: none;">Уже есть аккаунт? Войти</button>
+            </div>
+        </div>
+    </div>
 
-<script src="app.js"></script>
+    <!-- ОСНОВНОЕ МОДАЛЬНОЕ ОКНО -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3 id="modal-title">Заголовок</h3>
+            <div id="modal-body">Содержимое</div>
+            <button id="modal-close" class="btn-secondary">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Подключаем модули в правильном порядке -->
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script src="map.js"></script>
+    <script src="ui.js"></script>
+    <script src="app.js"></script>
+
 </body>
 </html>

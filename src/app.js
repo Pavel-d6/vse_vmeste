@@ -1,623 +1,250 @@
-// Главный файл приложения
-console.log("🚀 Приложение запускается...");
+// app.js - Главный файл
+console.log("🚀 app.js loaded");
 
 class CharityApp {
     constructor() {
         this.backendUrl = 'http://127.0.0.1:8000/api';
-        this.map = null;
-        this.placemarks = [];
         this.helpRequests = [];
-        this.isMapLoaded = false;
-        this.mapRetryCount = 0;
-        this.maxMapRetries = 3;
+        this.currentUser = null;
+        
+        // Инициализируем менеджеры
+        this.ui = new UIManager(this);
+        this.api = new ApiService(this);
+        this.map = new MapManager(this);
+        this.auth = new AuthManager(this);
+        
+        console.log("✅ CharityApp created");
         this.init();
     }
 
     async init() {
-        console.log("Инициализация приложения...");
+        console.log("🔧 Initializing app...");
         
-        // Инициализация компонентов
-        this.initNavigation();
-        this.initButtons();
-        this.initModal();
+        this.ui.initNavigation();
+        this.ui.initButtons();
+        this.ui.initModal();
+        this.auth.initAuthModal();
         
-        // Загружаем сохраненные заявки
-        await this.loadSavedRequests();
+        // Проверяем авторизацию
+        await this.auth.checkAuthStatus();
         
-        // Запускаем проверку Яндекс.Карт
-        this.initYandexMaps();
+        // Загружаем данные
+        await this.api.loadHelpRequests();
+        await this.api.loadFunds();
         
-        console.log("✅ Приложение инициализировано");
+        // Инициализируем карту
+        this.map.initYandexMaps();
+        
+        console.log("✅ App initialized successfully");
     }
 
-    // Инициализация Яндекс.Карт с повторными попытками
-    initYandexMaps() {
-        console.log("🔍 Проверяем доступность Яндекс.Карт...");
-        
-        if (typeof ymaps !== 'undefined') {
-            console.log("🗺️ Яндекс.Карты доступны, инициализируем карту");
-            this.initMap();
-            return;
-        }
-
-        // Ждем загрузки Яндекс.Карт
-        const checkInterval = setInterval(() => {
-            if (typeof ymaps !== 'undefined') {
-                clearInterval(checkInterval);
-                console.log("🗺️ Яндекс.Карты загружены после ожидания");
-                this.initMap();
-            }
-            
-            this.mapRetryCount++;
-            if (this.mapRetryCount >= 20) { // 20 попыток по 100мс = 2 секунды
-                clearInterval(checkInterval);
-                console.error("❌ Яндекс.Карты не загрузились за 2 секунды");
-                this.showMapError();
-            }
-        }, 100);
-    }
-
-    // Инициализация карты
-    initMap() {
-        if (typeof ymaps === 'undefined') {
-            console.error("❌ Яндекс.Карты не доступны для инициализации");
-            this.showMapError();
-            return;
-        }
-
-        ymaps.ready(() => {
-            console.log("🗺️ Яндекс.Карты готовы к созданию карты");
-            
-            try {
-                const mapElement = document.getElementById('map');
-                if (!mapElement) {
-                    console.error("❌ Элемент карты не найден");
-                    return;
-                }
-
-                // Очищаем контейнер
-                mapElement.innerHTML = '';
-                
-                // Создаем карту
-                this.map = new ymaps.Map('map', {
-                    center: [55.7558, 37.6173], // Москва
-                    zoom: 10,
-                    controls: ['zoomControl', 'fullscreenControl', 'searchControl']
-                }, {
-                    searchControlProvider: 'yandex#search'
-                });
-
-                this.isMapLoaded = true;
-                console.log("✅ Карта успешно создана");
-
-                // Обработчик клика по карте для создания заявки
-                this.map.events.add('click', (e) => {
-                    const coords = e.get('coords');
-                    console.log('Клик по карте:', coords);
-                    this.showCreateRequestFormWithCoords(coords);
-                });
-
-                // Загружаем заявки на карту
-                this.updateMapMarkers();
-
-            } catch (error) {
-                console.error("❌ Критическая ошибка при создании карты:", error);
-                this.showMapError();
-            }
-        });
-    }
-
-    // Показать ошибку загрузки карты
-    showMapError() {
-        const mapElement = document.getElementById('map');
-        if (mapElement) {
-            mapElement.innerHTML = `
-                <div style="padding: 2rem; text-align: center; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
-                    <h3 style="color: #856404;">⚠️ Временные проблемы с картой</h3>
-                    <p>Функциональность заявок работает, но карта временно недоступна.</p>
-                    <p>Загружено заявок: <strong>${this.helpRequests.length}</strong></p>
-                    <button class="btn-primary" onclick="app.retryMapLoad()" style="margin-top: 1rem;">
-                        Повторить загрузку карты
-                    </button>
-                </div>
-            `;
-        }
-    }
-
-    // Повторная загрузка карты
-    retryMapLoad() {
-        this.mapRetryCount = 0;
-        console.log(`🔄 Повторная попытка загрузки карты`);
-        this.initYandexMaps();
-    }
-
-    // Навигация между страницами
-    initNavigation() {
-        const navButtons = document.querySelectorAll('.nav-btn');
-        
-        navButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const pageId = e.target.dataset.page;
-                console.log("Переход на страницу:", pageId);
-                
-                // Убираем активный класс у всех кнопок
-                navButtons.forEach(b => b.classList.remove('active'));
-                // Добавляем активный класс текущей кнопке
-                e.target.classList.add('active');
-                
-                // Скрываем все страницы
-                document.querySelectorAll('.page').forEach(page => {
-                    page.classList.remove('active');
-                });
-                
-                // Показываем выбранную страницу
-                document.getElementById(`${pageId}-page`).classList.add('active');
-                
-                // Загружаем данные если нужно
-                if (pageId === 'funds') {
-                    this.loadFunds();
-                }
-                
-                // Инициализируем карту если перешли на страницу карты и она еще не загружена
-                if (pageId === 'map' && !this.isMapLoaded) {
-                    setTimeout(() => this.initYandexMaps(), 100);
-                }
-            });
-        });
-    }
-
-    // Инициализация кнопок
-    initButtons() {
-        // Кнопка создания заявки
-        const createRequestBtn = document.getElementById('create-request-btn');
-        if (createRequestBtn) {
-            createRequestBtn.addEventListener('click', () => {
-                console.log("🎯 Кнопка 'Создать заявку' нажата!");
-                this.showCreateRequestForm();
-            });
-        }
-
-        // Кнопка добавления фонда
-        const addFundBtn = document.getElementById('add-fund-btn');
-        if (addFundBtn) {
-            addFundBtn.addEventListener('click', () => {
-                console.log("🎯 Кнопка 'Добавить фонд' нажата!");
-                this.showAddFundForm();
-            });
-        }
-
-        // Тестовая кнопка
-        const testBtn = document.getElementById('test-btn');
-        if (testBtn) {
-            testBtn.addEventListener('click', () => {
-                console.log("🧪 Тестовая кнопка нажата!");
-                this.testAPI();
-            });
-        }
-
-        // Фильтры
-        const categoryFilter = document.getElementById('category-filter');
-        const urgencyFilter = document.getElementById('urgency-filter');
-        
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', () => this.updateMapMarkers());
-        }
-        if (urgencyFilter) {
-            urgencyFilter.addEventListener('change', () => this.updateMapMarkers());
-        }
-    }
-
-    // Обновление меток на карте
-    updateMapMarkers() {
-        if (!this.map || !this.isMapLoaded) {
-            console.log("❌ Карта не инициализирована, пропускаем обновление меток");
-            return;
-        }
-        
-        console.log("🔄 Обновление меток на карте...");
-        console.log("Всего заявок:", this.helpRequests.length);
-        
-        // Очищаем старые метки
-        this.placemarks.forEach(pm => this.map.geoObjects.remove(pm));
-        this.placemarks = [];
-        
-        // Фильтруем заявки
-        const categoryFilter = document.getElementById('category-filter');
-        const urgencyFilter = document.getElementById('urgency-filter');
-        
-        const category = categoryFilter ? categoryFilter.value : '';
-        const urgency = urgencyFilter ? urgencyFilter.value : '';
-        
-        const filteredRequests = this.helpRequests.filter(request => {
-            return (!category || request.category === category) && 
-                   (!urgency || request.urgency === urgency);
-        });
-        
-        console.log("Отфильтровано заявок:", filteredRequests.length);
-        
-        // Создаем новые метки
-        filteredRequests.forEach((request, index) => {
-            console.log(`Создаем метку ${index + 1}:`, request.title, request.latitude, request.longitude);
-            
-            // Проверяем координаты
-            if (!request.latitude || !request.longitude) {
-                console.log("❌ У заявки нет координат:", request);
-                return;
-            }
-            
-            const categoryEmojis = {
-                'food': '🍎',
-                'clothes': '👕',
-                'medicine': '💊'
-            };
-            
-            const placemark = new ymaps.Placemark(
-                [request.latitude, request.longitude],
-                {
-                    balloonContentHeader: `<strong>${categoryEmojis[request.category] || '📍'} ${request.title}</strong>`,
-                    balloonContentBody: `
-                        <div style="padding: 10px;">
-                            <p><strong>Категория:</strong> ${this.getCategoryDisplay(request.category)}</p>
-                            <p><strong>Срочность:</strong> ${this.getUrgencyDisplay(request.urgency)}</p>
-                            <p><strong>Адрес:</strong> ${request.address}</p>
-                            <p><strong>Описание:</strong> ${request.description}</p>
-                            <p><strong>Контакт:</strong> ${request.contact_name}</p>
-                            <p><strong>Телефон:</strong> <a href="tel:${request.contact_phone}">${request.contact_phone}</a></p>
-                        </div>
-                    `,
-                    hintContent: request.title
-                },
-                {
-                    preset: this.getPresetByUrgency(request.urgency),
-                    balloonCloseButton: true,
-                    hideIconOnBalloonOpen: false
-                }
+    showCreateRequestForm() {
+        // ИСПРАВЛЕНО: правильная проверка авторизации
+        if (!this.currentUser) {
+            this.ui.showModal('Требуется авторизация', 
+                '<p>Для создания заявки необходимо войти в систему</p>' +
+                '<button class="btn-primary" onclick="window.app.auth.showAuthModal(\'login\'); window.app.ui.hideModal()">Войти</button>'
             );
-            
-            this.placemarks.push(placemark);
-            this.map.geoObjects.add(placemark);
-        });
-        
-        console.log("✅ Создано меток:", this.placemarks.length);
-    }
-
-    // Получение отображения категории
-    getCategoryDisplay(category) {
-        const categories = {
-            'food': '🍎 Еда',
-            'clothes': '👕 Одежда',
-            'medicine': '💊 Лекарства'
-        };
-        return categories[category] || category;
-    }
-
-    // Получение отображения срочности
-    getUrgencyDisplay(urgency) {
-        const urgencies = {
-            'low': '📗 Не срочно',
-            'medium': '📘 Средняя',
-            'high': '📙 Срочно',
-            'critical': '📕 Очень срочно'
-        };
-        return urgencies[urgency] || urgency;
-    }
-
-    // Получение иконки по срочности
-    getPresetByUrgency(urgency) {
-        const presets = {
-            'critical': 'islands#redIcon',
-            'high': 'islands#orangeIcon', 
-            'medium': 'islands#blueIcon',
-            'low': 'islands#greenIcon'
-        };
-        return presets[urgency] || 'islands#blueIcon';
-    }
-
-    // Обновление статистики
-    updateStats() {
-        const requestsCount = document.getElementById('requests-count');
-        if (requestsCount) {
-            requestsCount.textContent = `Заявок: ${this.helpRequests.length}`;
+            return;
         }
-    }
-
-    // Форма создания заявки (с координатами)
-    showCreateRequestFormWithCoords(coords) {
-        this.showCreateRequestForm(coords);
-    }
-
-    // Форма создания заявки
-    showCreateRequestForm(coords = null) {
-        const coordsInfo = coords ? 
-            `<p style="color: #28a745; margin-bottom: 1rem;">📍 Координаты выбраны: ${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</p>` : 
-            '<p style="color: #666; margin-bottom: 1rem;">💡 Совет: кликните на карте, чтобы выбрать место</p>';
         
         const formHtml = `
-            <h3>✋ Создать заявку о помощи</h3>
-            ${coordsInfo}
-            <form onsubmit="app.submitHelpRequest(event, ${coords ? `[${coords[0]}, ${coords[1]}]` : 'null'})">
-                <input type="text" name="title" placeholder="Заголовок заявки *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                <textarea name="description" placeholder="Описание потребности *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; height: 100px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
-                
-                <div style="display: flex; gap: 1rem; margin: 0.5rem 0;">
-                    <select name="category" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="">Категория *</option>
+            <form id="create-request-form">
+                <div class="form-group">
+                    <label>Заголовок:</label>
+                    <input type="text" name="title" placeholder="Краткое описание" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание:</label>
+                    <textarea name="description" placeholder="Подробное описание потребности" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Категория:</label>
+                    <select name="category" required>
                         <option value="food">🍎 Еда</option>
                         <option value="clothes">👕 Одежда</option>
                         <option value="medicine">💊 Лекарства</option>
+                        <option value="household">🏠 Хозтовары</option>
+                        <option value="other">❔ Другое</option>
                     </select>
-                    
-                    <select name="urgency" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="">Срочность *</option>
+                </div>
+                <div class="form-group">
+                    <label>Срочность:</label>
+                    <select name="urgency" required>
                         <option value="low">📗 Не срочно</option>
-                        <option value="medium">📘 Средняя</option>
+                        <option value="medium">📐 Средняя</option>
                         <option value="high">📙 Срочно</option>
                         <option value="critical">📕 Очень срочно</option>
                     </select>
                 </div>
-                
-                <input type="text" name="address" placeholder="Адрес *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                
-                <div style="display: flex; gap: 1rem; margin: 0.5rem 0;">
-                    <input type="text" name="contact_name" placeholder="Ваше имя *" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                    <input type="tel" name="contact_phone" placeholder="Телефон *" required style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <div class="form-group">
+                    <label>Адрес:</label>
+                    <input type="text" id="address-input" name="address" placeholder="Москва, улица Тверская, 1" required>
+                    <button type="button" class="btn-secondary" onclick="window.app.geocodeAddress()" style="margin-top: 5px;">
+                        🔍 Найти на карте
+                    </button>
                 </div>
-                
+                <div class="form-group" style="display: none;">
+                    <label>Широта:</label>
+                    <input type="number" name="latitude" id="latitude-input" step="any" value="55.7558" required>
+                </div>
+                <div class="form-group" style="display: none;">
+                    <label>Долгота:</label>
+                    <input type="number" name="longitude" id="longitude-input" step="any" value="37.6173" required>
+                </div>
+                <div id="map-preview" style="height: 200px; margin: 10px 0; display: none; border-radius: 8px;"></div>
+                <div class="form-group">
+                    <label>Контактное лицо:</label>
+                    <input type="text" name="contact_name" placeholder="Ваше имя" value="${this.currentUser.username}" required>
+                </div>
+                <div class="form-group">
+                    <label>Телефон:</label>
+                    <input type="tel" name="contact_phone" placeholder="+7 XXX XXX-XX-XX" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" name="contact_email" placeholder="email@example.com" value="${this.currentUser.email || ''}">
+                </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="app.hideModal()">Отмена</button>
+                    <button type="button" class="btn-secondary" onclick="window.app.ui.hideModal()">Отмена</button>
                     <button type="submit" class="btn-primary">Создать заявку</button>
                 </div>
             </form>
         `;
         
-        this.showModal('Создать заявку', formHtml);
+        this.ui.showModal('Создать заявку', formHtml);
+        
+        // Добавляем обработчик формы
+        setTimeout(() => {
+            const form = document.getElementById('create-request-form');
+            if (form) {
+                form.addEventListener('submit', (e) => this.handleCreateRequestSubmit(e));
+            }
+        }, 100);
     }
 
-    // Отправка заявки
-    async submitHelpRequest(event, coords = null) {
-        event.preventDefault();
-        const formData = new FormData(event.target);
-        const data = Object.fromEntries(formData.entries());
+    async geocodeAddress() {
+        const addressInput = document.getElementById('address-input');
+        const address = addressInput.value.trim();
         
-        // Используем координаты с карты или генерируем случайные
-        if (coords) {
-            data.latitude = coords[0];
-            data.longitude = coords[1];
-        } else {
-            // Для демо - случайные координаты в Москве
-            data.latitude = 55.7558 + (Math.random() - 0.5) * 0.1;
-            data.longitude = 37.6173 + (Math.random() - 0.5) * 0.1;
+        if (!address) {
+            alert('Введите адрес');
+            return;
         }
         
-        // Добавляем ID и timestamp
-        data.id = Date.now();
-        data.created_at = new Date().toISOString();
-        
         try {
-            // Сначала сохраняем локально
-            await this.saveRequest(data);
+            const result = await ymaps.geocode(address);
+            const firstGeoObject = result.geoObjects.get(0);
             
-            // Затем пытаемся отправить на сервер
-            try {
-                const response = await fetch(`${this.backendUrl}/help-requests/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                if (response.ok) {
-                    console.log('✅ Заявка отправлена на сервер');
-                }
-            } catch (serverError) {
-                console.warn('⚠️ Сервер недоступен, заявка сохранена локально:', serverError);
+            if (!firstGeoObject) {
+                alert('Адрес не найден. Попробуйте уточнить.');
+                return;
             }
             
-            this.showModal('Успех', '✅ Заявка успешно создана и сохранена!');
-            setTimeout(() => this.hideModal(), 2000);
+            const coords = firstGeoObject.geometry.getCoordinates();
             
-            // Перезагружаем заявки
-            await this.loadSavedRequests();
-            this.updateMapMarkers();
-            this.updateStats();
+            // Устанавливаем координаты
+            document.getElementById('latitude-input').value = coords[0];
+            document.getElementById('longitude-input').value = coords[1];
             
-        } catch (error) {
-            console.error('Ошибка сохранения заявки:', error);
-            this.showModal('Ошибка', '❌ Не удалось создать заявку: ' + error.message);
-        }
-    }
-
-    // Сохранение заявки (без использования localStorage)
-    async saveRequest(request) {
-        console.log('💾 Сохраняем заявку:', request);
-        
-        // Добавляем в массив
-        this.helpRequests.push(request);
-        
-        // Если есть бэкенд, сохраняем там
-        // Если нет - заявка остается в памяти до перезагрузки страницы
-        console.log('✅ Заявка добавлена в память');
-    }
-
-    // Загрузка сохраненных заявок
-    async loadSavedRequests() {
-        console.log('📥 Загружаем сохраненные заявки...');
-        
-        // Пробуем загрузить с сервера
-        try {
-            const response = await fetch(`${this.backendUrl}/help-requests/`);
-            if (response.ok) {
-                const data = await response.json();
-                this.helpRequests = data.results || data;
-                console.log(`✅ Загружено ${this.helpRequests.length} заявок с сервера`);
-            }
-        } catch (error) {
-            console.warn('⚠️ Сервер недоступен, используем локальные данные');
-            // Если сервер недоступен, начинаем с пустого массива
-            this.helpRequests = [];
-        }
-        
-        this.updateStats();
-    }
-
-    // Форма добавления фонда
-    showAddFundForm() {
-        const formHtml = `
-            <h3>🏛️ Добавить благотворительный фонд</h3>
-            <form onsubmit="app.submitFundForm(event)">
-                <input type="text" name="name" placeholder="Название фонда *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                <textarea name="description" placeholder="Описание фонда *" required style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; height: 100px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
-                <input type="url" name="website" placeholder="Веб-сайт" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                <input type="email" name="contact_email" placeholder="Email" style="width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                
-                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="app.hideModal()">Отмена</button>
-                    <button type="submit" class="btn-primary">Добавить фонд</button>
-                </div>
-            </form>
-        `;
-        
-        this.showModal('Добавить фонд', formHtml);
-    }
-
-    // Отправка формы фонда
-    async submitFundForm(event) {
-        event.preventDefault();
-        const formData = new FormData(event.target);
-        const data = Object.fromEntries(formData.entries());
-        
-        try {
-            const response = await fetch(`${this.backendUrl}/funds/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
+            // Показываем превью карты
+            const mapPreview = document.getElementById('map-preview');
+            mapPreview.style.display = 'block';
+            mapPreview.innerHTML = '';
+            
+            const previewMap = new ymaps.Map('map-preview', {
+                center: coords,
+                zoom: 15
             });
             
-            if (response.ok) {
-                this.showModal('Успех', '✅ Фонд успешно добавлен!');
-                setTimeout(() => this.hideModal(), 2000);
-                // Перезагружаем фонды
-                this.loadFunds();
-            } else {
-                throw new Error('Ошибка при добавлении фонда');
-            }
+            previewMap.geoObjects.add(new ymaps.Placemark(coords, {
+                balloonContent: address
+            }));
+            
+            alert('✅ Адрес найден на карте!');
+            
         } catch (error) {
-            this.showModal('Ошибка', '❌ Не удалось добавить фонд: ' + error.message);
+            console.error('Ошибка геокодирования:', error);
+            alert('Ошибка поиска адреса. Проверьте подключение к интернету.');
         }
     }
 
-    // Модальное окно
-    initModal() {
-        this.modal = document.getElementById('modal');
-        this.modalTitle = document.getElementById('modal-title');
-        this.modalBody = document.getElementById('modal-body');
-        this.modalClose = document.getElementById('modal-close');
-
-        this.modalClose.addEventListener('click', () => {
-            this.hideModal();
-        });
-
-        this.modal.addEventListener('click', (e) => {
-            if (e.target === this.modal) {
-                this.hideModal();
-            }
-        });
-    }
-
-    showModal(title, content) {
-        this.modalTitle.textContent = title;
-        this.modalBody.innerHTML = content;
-        this.modal.style.display = 'flex';
-    }
-
-    hideModal() {
-        this.modal.style.display = 'none';
-    }
-
-    // Загрузка фондов
-    async loadFunds() {
-        console.log("Загрузка фондов...");
+    async handleCreateRequestSubmit(event) {
+        event.preventDefault();
         
-        try {
-            const response = await fetch(`${this.backendUrl}/funds/`);
-            
-            if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            
-            const funds = await response.json();
-            console.log("Загружено фондов:", funds.length);
-            
-            this.displayFunds(funds);
-            
-        } catch (error) {
-            console.error("Ошибка загрузки фондов:", error);
-            this.showModal('Ошибка', 'Не удалось загрузить фонды. Проверьте подключение к серверу.');
-        }
-    }
-
-    // Отображение фондов
-    displayFunds(funds) {
-        const fundsList = document.getElementById('funds-list');
-        
-        if (!fundsList) return;
-
-        if (funds.length === 0) {
-            fundsList.innerHTML = '<p style="text-align: center; padding: 2rem;">Пока нет благотворительных фондов</p>';
+        if (!this.currentUser) {
+            this.auth.showAuthModal('login');
             return;
         }
 
-        fundsList.innerHTML = funds.map(fund => `
-            <div class="fund-card">
-                <h3>${fund.name}</h3>
-                <p>${fund.description}</p>
-                ${fund.website ? `<p><a href="${fund.website}" target="_blank" rel="noopener noreferrer">🌐 Сайт</a></p>` : ''}
-                ${fund.contact_email ? `<p>📧 ${fund.contact_email}</p>` : ''}
-                <button class="btn-primary" onclick="app.showModal('${fund.name}', 'Поддержка фонда в разработке')">
-                    Поддержать
-                </button>
-            </div>
-        `).join('');
+        const formData = new FormData(event.target);
+        const requestData = Object.fromEntries(formData.entries());
+        
+        // Преобразуем координаты в числа
+        requestData.latitude = parseFloat(requestData.latitude);
+        requestData.longitude = parseFloat(requestData.longitude);
+
+        try {
+            await this.api.createHelpRequest(requestData);
+            this.ui.hideModal();
+            await this.api.loadHelpRequests();
+            this.map.updateMapMarkers();
+            this.ui.showModal('Успех', '✅ Заявка успешно создана!');
+        } catch (error) {
+            this.ui.showModal('Ошибка', '❌ Не удалось создать заявку: ' + error.message);
+        }
     }
 
-    // Тест API
-    async testAPI() {
-        console.log('🧪 Тестируем систему...');
-        
-        let apiStatus = '❌ Недоступен';
-        let fundsCount = 0;
-        
-        try {
-            const response = await fetch(`${this.backendUrl}/funds/`);
-            if (response.ok) {
-                const data = await response.json();
-                apiStatus = '✅ Работает';
-                fundsCount = data.length;
-            }
-        } catch (error) {
-            console.error('API недоступен:', error);
-        }
-        
-        const ymapsStatus = typeof ymaps !== 'undefined' ? '✅ Загружен' : '❌ Не загружен';
-        
-        this.showModal('🧪 Тест системы', `
-            <div style="text-align: left;">
-                <p><strong>API Backend:</strong> ${apiStatus}</p>
-                <p><strong>Яндекс.Карты:</strong> ${ymapsStatus}</p>
-                <p><strong>Карта инициализирована:</strong> ${this.isMapLoaded ? '✅ Да' : '❌ Нет'}</p>
-                <p><strong>Заявок в памяти:</strong> ${this.helpRequests.length}</p>
-                <p><strong>Меток на карте:</strong> ${this.placemarks.length}</p>
-                <p><strong>Фондов на сервере:</strong> ${fundsCount}</p>
-            </div>
-        `);
+    // Вспомогательные методы для отображения
+    getCategoryDisplay(category) {
+        const categories = {
+            'food': '🍎 Еда',
+            'clothes': '👕 Одежда', 
+            'medicine': '💊 Лекарства',
+            'household': '🏠 Хозтовары',
+            'other': '❔ Другое'
+        };
+        return categories[category] || category;
     }
+
+    getUrgencyDisplay(urgency) {
+        const urgencies = {
+            'low': '📗 Не срочно',
+            'medium': '📐 Средняя',
+            'high': '📙 Срочно', 
+            'critical': '📕 Очень срочно'
+        };
+        return urgencies[urgency] || urgency;
+    }
+}
+
+// Глобальные функции
+function showAuthModal(type) {
+    if (window.app) window.app.auth.showAuthModal(type);
+}
+
+function closeAuthModal() {
+    if (window.app) window.app.auth.closeAuthModal();
+}
+
+function switchAuthForm(type) {
+    if (window.app) window.app.auth.switchAuthForm(type);
+}
+
+function checkAuthBeforeCreate() {
+    if (window.app) window.app.showCreateRequestForm();
+}
+
+function showProfileModal() {
+    if (window.app) window.app.auth.showProfileModal();
+}
+
+function logout() {
+    if (window.app) window.app.auth.logout();
 }
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("📄 DOM загружен, запускаем приложение!");
+    console.log("📄 DOM loaded, starting app...");
     window.app = new CharityApp();
 });

@@ -1,5 +1,20 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
+# ДОБАВЛЯЕМ В НАЧАЛО ФАЙЛА - модель пользователя
+class CustomUser(AbstractUser):
+    phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name="Аватар")
+    
+    class Meta:
+        verbose_name = "Пользователь"
+        verbose_name_plural = "Пользователи"
+    
+    def __str__(self):
+        return self.username
+
+
+# СУЩЕСТВУЮЩИЙ КОД - оставляем как есть
 class CharityFund(models.Model):
     name = models.CharField(max_length=200, verbose_name="Название фонда")
     description = models.TextField(verbose_name="Описание")
@@ -16,6 +31,8 @@ class CharityFund(models.Model):
     def __str__(self):
         return self.name
 
+
+# ОБНОВЛЯЕМ существующую модель HelpRequest - ДОБАВЛЯЕМ поле user
 class HelpRequest(models.Model):
     CATEGORY_CHOICES = [
         ('food', '🍎 Еда'),
@@ -51,6 +68,16 @@ class HelpRequest(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Активная заявка")
     is_fulfilled = models.BooleanField(default=False, verbose_name="Выполнена")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    
+    # ДОБАВЛЯЕМ ЭТО ПОЛЕ - связь с пользователем
+    user = models.ForeignKey(
+        CustomUser,  # Ссылаемся на нашу новую модель пользователя
+        on_delete=models.CASCADE,
+        related_name='help_requests',
+        verbose_name="Пользователь",
+        null=True,  # Временно для существующих заявок
+        blank=True
+    )
     
     class Meta:
         verbose_name = "Заявка на помощь"
