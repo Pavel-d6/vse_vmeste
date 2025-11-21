@@ -49,10 +49,10 @@ body {
     padding: 1rem 0;
     display: flex;
     gap: 0.5rem;
-    position: absolute;
+    /* position: absolute;
     left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
+    transform: translateX(-50%); */
+    /* white-space: nowrap; */
 }
 
 .nav-btn {
