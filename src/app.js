@@ -242,7 +242,9 @@ function showProfileModal() {
 function logout() {
     if (window.app) window.app.auth.logout();
 }
-
+function loadProfilePage() {
+    if (window.app) window.app.auth.loadProfilePage();
+}
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', function() {
     console.log("📄 DOM loaded, starting app...");

@@ -173,8 +173,9 @@ class ApiService {
     }
 
     async approveFund(fundId) {
+        console.log(fundId)
         const token = this.app.auth.getAccessToken();
-        
+        console.log(token)
         try {
             const response = await fetch(`${this.backendUrl}/funds/${fundId}/approve/`, {
                 method: 'POST',

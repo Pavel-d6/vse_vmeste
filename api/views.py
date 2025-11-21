@@ -59,10 +59,7 @@ class CharityFundViewSet(viewsets.ModelViewSet):
         fund.status = 'approved'
         fund.save()
         
-        # Назначаем создателю роль fund_creator
-        if fund.creator.role == 'user':
-            fund.creator.role = 'fund_creator'
-            fund.creator.save()
+        print(f"✅ Фонд '{fund.name}' одобрен. Создатель: {fund.creator.username}, роль: {fund.creator.role}")
         
         return Response({'status': 'Фонд одобрен'})
     

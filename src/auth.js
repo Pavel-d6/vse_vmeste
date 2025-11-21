@@ -66,11 +66,20 @@ class AuthManager {
         if (this.app.currentUser) {
             if (authButtons) authButtons.style.display = 'none';
             if (userProfile) userProfile.style.display = 'flex';
-            if (usernameDisplay) usernameDisplay.textContent = this.app.currentUser.username;
+            if (usernameDisplay) {
+                // Добавляем иконку в зависимости от роли
+                const roleIcons = {
+                    'user': '👤',
+                    'fund_creator': '🏛️',
+                    'admin': '⭐'
+                };
+                const icon = roleIcons[this.app.currentUser.role] || '👤';
+                usernameDisplay.textContent = `${icon} ${this.app.currentUser.username}`;
+            }
             
             // Кнопка создания заявки только для обычных пользователей
             if (createRequestBtn) {
-                if (this.app.currentUser.role === 'user' || !this.app.currentUser.role) {
+                if (this.app.currentUser.role === 'user') {
                     createRequestBtn.style.display = 'inline-block';
                 } else {
                     createRequestBtn.style.display = 'none';
@@ -150,7 +159,9 @@ class AuthManager {
                 email: document.getElementById('register-email')?.value || '',
                 password: document.getElementById(isLogin ? 'login-password' : 'register-password').value,
                 password2: document.getElementById('register-password2')?.value || '',
-                account_type: document.getElementById('register-account-type')?.value || 'user'
+                account_type: document.getElementById('register-account-type')?.value || 'user',
+                fund_name: document.getElementById('register-fund-name')?.value || '',
+                fund_description: document.getElementById('register-fund-description')?.value || ''
             };
 
             if (!isLogin) {
@@ -167,6 +178,16 @@ class AuthManager {
                 
                 if (formData.password !== formData.password2) {
                     errors.push('Пароли не совпадают');
+                }
+                
+                // Проверка полей фонда
+                if (formData.account_type === 'fund') {
+                    if (!formData.fund_name || formData.fund_name.trim() === '') {
+                        errors.push('Укажите название фонда');
+                    }
+                    if (!formData.fund_description || formData.fund_description.trim() === '') {
+                        errors.push('Укажите описание фонда');
+                    }
                 }
                 
                 if (errors.length > 0) {
@@ -194,7 +215,9 @@ class AuthManager {
             let successMessage = '✅ Вход выполнен!';
             if (!isLogin) {
                 if (formData.account_type === 'fund') {
-                    successMessage = '✅ Регистрация завершена! Ваша заявка на создание фонда отправлена на проверку администратору.';
+                    successMessage = `✅ Регистрация завершена!<br><br>
+                        <strong>Ваш фонд "${formData.fund_name}" отправлен на проверку администратору.</strong><br><br>
+                        После одобрения вы сможете создавать сборы средств.`;
                 } else {
                     successMessage = '✅ Регистрация завершена! Теперь вы можете создавать заявки на помощь.';
                 }
@@ -218,11 +241,14 @@ class AuthManager {
                     email: userData.email,
                     password: userData.password,
                     password2: userData.password2,
-                    account_type: userData.account_type
+                    account_type: userData.account_type,
+                    fund_name: userData.fund_name || '',
+                    fund_description: userData.fund_description || ''
                 })
             });
             
             const result = await response.json();
+            console.log('📡 Ответ регистрации:', result);
             
             if (!response.ok) {
                 return {error: result.detail || JSON.stringify(result)};
@@ -259,18 +285,13 @@ class AuthManager {
         console.log('\n' + '='.repeat(50));
         console.log('🔍 ЗАГРУЗКА ЛИЧНОГО КАБИНЕТА');
         console.log('='.repeat(50));
-        
-        if (!this.app.currentUser) {
-            console.log('❌ Пользователь не авторизован');
-            this.showAuthModal('login');
-            return;
-        }
 
         const role = this.app.currentUser.role || 'user';
         console.log('👤 Пользователь:', this.app.currentUser.username);
         console.log('🎭 Роль:', role);
         
-        const profileContent = document.getElementById('profile-content');
+        const profileContent = document.getElementById('profile-page');
+        console.log(profileContent)
         profileContent.innerHTML = '<p style="text-align: center; padding: 2rem;">⏳ Загрузка данных...</p>';
         
         let content = '';
@@ -524,6 +545,7 @@ class AuthManager {
         if (!Array.isArray(pendingFunds) || pendingFunds.length === 0) {
             html += '<div style="background: #d1f2eb; border-radius: 8px; padding: 2rem; text-align: center; margin: 1rem 0;"><p style="color: #0a6e4d;">✅ Нет фондов на проверке</p></div>';
         } else {
+            console.log(pendingFunds)
             html += pendingFunds.map(fund => `
                 <div class="fund-item admin-fund">
                     <h4>${fund.name}</h4>
@@ -532,8 +554,8 @@ class AuthManager {
                     <p style="color: #666; font-size: 0.9rem;">📧 Email: ${fund.contact_email}</p>
                     ${fund.website ? `<p style="color: #666; font-size: 0.9rem;">🌐 Сайт: <a href="${fund.website}" target="_blank">${fund.website}</a></p>` : ''}
                     <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                        <button class="btn-primary" onclick="window.app.approveFund(${fund.id})">✅ Одобрить</button>
-                        <button class="btn-secondary" onclick="window.app.rejectFund(${fund.id})">❌ Отклонить</button>
+                        <button class="btn-primary" onclick="window.app.api.approveFund(${fund.id})">✅ Одобрить</button>
+                        <button class="btn-secondary" onclick="window.app.api.rejectFund(${fund.id})">❌ Отклонить</button>
                     </div>
                 </div>
             `).join('');

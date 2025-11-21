@@ -30,6 +30,8 @@ class UIManager {
         
         if (targetBtn) targetBtn.classList.add('active');
         if (targetPage) targetPage.classList.add('active');
+        // console.log(targetBtn);
+        // if (targetBtn.dataset.page === 'lk') loadProfilePage();
     }
 
     initButtons() {
@@ -151,7 +153,7 @@ class UIManager {
         }
 
         fundsList.innerHTML = funds.map(fund => `
-            <div class="fund-card" onclick="window.app.showFundDetails(${fund.id})" style="cursor: pointer;">
+            <div class="fund-card">
                 ${fund.image_url ? `<img src="${fund.image_url}" alt="${fund.name}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">` : ''}
                 <h3 style="margin-bottom: 0.5rem; color: #2c3e50;">${fund.name}</h3>
                 <p style="color: #666; margin-bottom: 1rem; line-height: 1.5;">${fund.description}</p>
@@ -159,9 +161,7 @@ class UIManager {
                     ${fund.website ? `<p style="margin-bottom: 0.5rem;"><span style="color: #667eea;">🌐 Сайт фонда</span></p>` : ''}
                     ${fund.contact_email ? `<p style="margin-bottom: 0.5rem; color: #666;">📧 ${fund.contact_email}</p>` : ''}
                     <p style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">Создатель: ${fund.creator_username || 'Неизвестен'}</p>
-                    <button class="btn-primary" style="margin-top: 0.5rem; width: 100%;" onclick="event.stopPropagation(); window.app.showFundDetails(${fund.id})">
-                        Посмотреть сборы 💰
-                    </button>
+    
                 </div>
             </div>
         `).join('');
