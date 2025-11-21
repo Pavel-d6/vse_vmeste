@@ -1,10 +1,16 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-# ДОБАВЛЯЕМ В НАЧАЛО ФАЙЛА - модель пользователя
 class CustomUser(AbstractUser):
+    USER_ROLES = [
+        ('user', 'Обычный пользователь'),
+        ('fund_creator', 'Создатель фонда'),
+        ('admin', 'Администратор'),
+    ]
+    
     phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name="Аватар")
+    role = models.CharField(max_length=20, choices=USER_ROLES, default='user', verbose_name="Роль")
     
     class Meta:
         verbose_name = "Пользователь"
@@ -14,15 +20,27 @@ class CustomUser(AbstractUser):
         return self.username
 
 
-# СУЩЕСТВУЮЩИЙ КОД - оставляем как есть
 class CharityFund(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'На проверке'),
+        ('approved', 'Одобрен'),
+        ('rejected', 'Отклонен'),
+    ]
+    
     name = models.CharField(max_length=200, verbose_name="Название фонда")
     description = models.TextField(verbose_name="Описание")
     image = models.ImageField(upload_to='funds/', blank=True, null=True, verbose_name="Логотип")
     website = models.URLField(blank=True, verbose_name="Веб-сайт")
     contact_email = models.EmailField(blank=True, verbose_name="Контактный email")
+    
+    # Новые поля
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='created_funds', verbose_name="Создатель")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Статус")
+    rejection_reason = models.TextField(blank=True, verbose_name="Причина отклонения")
+    
     is_active = models.BooleanField(default=True, verbose_name="Активный")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
     
     class Meta:
         verbose_name = "Благотворительный фонд"
@@ -32,7 +50,42 @@ class CharityFund(models.Model):
         return self.name
 
 
-# ОБНОВЛЯЕМ существующую модель HelpRequest - ДОБАВЛЯЕМ поле user
+class Fundraiser(models.Model):
+    """Сбор средств от фонда"""
+    STATUS_CHOICES = [
+        ('active', 'Активный'),
+        ('completed', 'Завершен'),
+        ('cancelled', 'Отменен'),
+    ]
+    
+    fund = models.ForeignKey(CharityFund, on_delete=models.CASCADE, related_name='fundraisers', verbose_name="Фонд")
+    title = models.CharField(max_length=200, verbose_name="Название сбора")
+    description = models.TextField(verbose_name="Описание")
+    goal_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цель сбора")
+    current_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Собрано")
+    
+    image = models.ImageField(upload_to='fundraisers/', blank=True, null=True, verbose_name="Изображение")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name="Статус")
+    
+    start_date = models.DateTimeField(verbose_name="Дата начала")
+    end_date = models.DateTimeField(verbose_name="Дата окончания")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    
+    class Meta:
+        verbose_name = "Сбор средств"
+        verbose_name_plural = "Сборы средств"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} ({self.fund.name})"
+    
+    @property
+    def progress_percentage(self):
+        if self.goal_amount > 0:
+            return min(100, (float(self.current_amount) / float(self.goal_amount)) * 100)
+        return 0
+
+
 class HelpRequest(models.Model):
     CATEGORY_CHOICES = [
         ('food', '🍎 Еда'),
@@ -68,14 +121,14 @@ class HelpRequest(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Активная заявка")
     is_fulfilled = models.BooleanField(default=False, verbose_name="Выполнена")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
     
-    # ДОБАВЛЯЕМ ЭТО ПОЛЕ - связь с пользователем
     user = models.ForeignKey(
-        CustomUser,  # Ссылаемся на нашу новую модель пользователя
+        CustomUser,
         on_delete=models.CASCADE,
         related_name='help_requests',
         verbose_name="Пользователь",
-        null=True,  # Временно для существующих заявок
+        null=True,
         blank=True
     )
     

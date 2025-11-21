@@ -5,27 +5,101 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.db.models import Q
-from .models import CharityFund, HelpRequest, CustomUser
+from .models import CharityFund, HelpRequest, CustomUser, Fundraiser
 from .serializers import (
     CharityFundSerializer, HelpRequestSerializer,
-    UserRegistrationSerializer, UserProfileSerializer
+    UserRegistrationSerializer, UserProfileSerializer,
+    FundraiserSerializer, FundApprovalSerializer
 )
-# СУЩЕСТВУЮЩИЙ КОД - оставляем как есть
+
+# Permissions
+class IsAdminUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role == 'admin'
+
+class IsFundCreator(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role == 'fund_creator'
+
+class IsFundOwner(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.creator == request.user
+
+
+# ViewSets
 class CharityFundViewSet(viewsets.ModelViewSet):
-    queryset = CharityFund.objects.filter(is_active=True)
     serializer_class = CharityFundSerializer
-    permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        # Обычные пользователи видят только одобренные фонды
+        if self.request.user.is_authenticated:
+            if self.request.user.role == 'admin':
+                return CharityFund.objects.all()
+            elif self.request.user.role == 'fund_creator':
+                # Создатели видят свои фонды + одобренные чужие
+                return CharityFund.objects.filter(
+                    Q(creator=self.request.user) | Q(status='approved')
+                )
+        return CharityFund.objects.filter(status='approved', is_active=True)
+    
+    def get_permissions(self):
+        if self.action in ['create']:
+            return [permissions.IsAuthenticated()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsFundOwner()]
+        return [permissions.AllowAny()]
+    
+    def perform_create(self, serializer):
+        serializer.save(creator=self.request.user)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def approve(self, request, pk=None):
+        """Одобрить фонд"""
+        fund = self.get_object()
+        fund.status = 'approved'
+        fund.save()
+        
+        # Назначаем создателю роль fund_creator
+        if fund.creator.role == 'user':
+            fund.creator.role = 'fund_creator'
+            fund.creator.save()
+        
+        return Response({'status': 'Фонд одобрен'})
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def reject(self, request, pk=None):
+        """Отклонить фонд"""
+        fund = self.get_object()
+        fund.status = 'rejected'
+        fund.rejection_reason = request.data.get('reason', '')
+        fund.save()
+        return Response({'status': 'Фонд отклонен'})
+
 
 class HelpRequestViewSet(viewsets.ModelViewSet):
     queryset = HelpRequest.objects.filter(is_active=True, is_fulfilled=False)
     serializer_class = HelpRequestSerializer
     permission_classes = [permissions.AllowAny]
     
+    def get_queryset(self):
+        queryset = HelpRequest.objects.filter(is_active=True, is_fulfilled=False)
+        
+        # Фильтрация
+        category = self.request.query_params.get('category', None)
+        urgency = self.request.query_params.get('urgency', None)
+        
+        if category:
+            queryset = queryset.filter(category=category)
+        if urgency:
+            queryset = queryset.filter(urgency=urgency)
+            
+        return queryset
+    
     @action(detail=False, methods=['get'])
     def nearby(self, request):
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
-        radius = request.query_params.get('radius', 10)  # км
+        radius = request.query_params.get('radius', 10)
         
         if not lat or not lng:
             return Response({'error': 'Требуются параметры lat и lng'}, status=400)
@@ -35,7 +109,6 @@ class HelpRequestViewSet(viewsets.ModelViewSet):
             lng = float(lng)
             radius = float(radius)
             
-            # Простая фильтрация по квадрату (для демо)
             lat_range = 0.09 * radius
             lng_range = 0.14 * radius
             
@@ -52,6 +125,30 @@ class HelpRequestViewSet(viewsets.ModelViewSet):
         except ValueError:
             return Response({'error': 'Неверные координаты'}, status=400)
 
+
+class FundraiserViewSet(viewsets.ModelViewSet):
+    serializer_class = FundraiserSerializer
+    
+    def get_queryset(self):
+        # Фильтруем по фонду, если указан параметр
+        fund_id = self.request.query_params.get('fund', None)
+        if fund_id:
+            return Fundraiser.objects.filter(fund_id=fund_id, status='active')
+        return Fundraiser.objects.filter(status='active')
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsFundCreator()]
+        return [permissions.AllowAny()]
+    
+    def perform_create(self, serializer):
+        # Проверяем, что пользователь создатель этого фонда
+        fund = serializer.validated_data['fund']
+        if fund.creator != self.request.user:
+            raise permissions.PermissionDenied("Вы не являетесь владельцем этого фонда")
+        serializer.save()
+
+
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def api_overview(request):
@@ -60,86 +157,25 @@ def api_overview(request):
         'endpoints': {
             'funds': '/api/funds/',
             'help-requests': '/api/help-requests/',
-            'nearby-requests': '/api/help-requests/nearby/?lat=55.75&lng=37.61&radius=10',
+            'fundraisers': '/api/fundraisers/',
             'register': '/api/auth/register/',
             'login': '/api/auth/login/',
             'profile': '/api/auth/profile/',
             'my-requests': '/api/my-requests/',
-            'create-request': '/api/requests/create/',
-            'admin': '/admin/',
+            'my-funds': '/api/my-funds/',
+            'admin-pending-funds': '/api/admin/pending-funds/',
         }
     }
     return Response(api_urls)
 
-# НОВЫЙ КОД - авторизация
 
-# Регистрация пользователя
+# Auth views
 class UserRegistrationView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        print("📥 Данные регистрации:", request.data)
-        print("📥 Заголовки:", request.headers)
-        
-        try:
-            return super().create(request, *args, **kwargs)
-        except Exception as e:
-            print("❌ Ошибка создания пользователя:", e)
-            import traceback
-            traceback.print_exc()
-            raise
 
-# Логин пользователя
-@api_view(['POST'])
-@permission_classes([permissions.AllowAny])
-def test_register(request):
-    """Тестовый endpoint для регистрации"""
-    print("📥 Получены данные:", request.data)
-    
-    # Простая проверка
-    required_fields = ['username', 'email', 'password', 'password2']
-    for field in required_fields:
-        if field not in request.data:
-            return Response(
-                {'error': f'Отсутствует поле: {field}'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    
-    # Проверка паролей
-    if request.data['password'] != request.data['password2']:
-        return Response(
-            {'error': 'Пароли не совпадают'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    return Response({'success': 'Данные валидны'}, status=status.HTTP_200_OK)
-
-# Профиль пользователя
-class UserProfileView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
-
-# Заявки пользователя
-class UserHelpRequestsView(generics.ListAPIView):
-    serializer_class = HelpRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return HelpRequest.objects.filter(user=self.request.user).order_by('-created_at')
-
-# Создание заявки (только для авторизованных)
-class HelpRequestCreateView(generics.CreateAPIView):
-    serializer_class = HelpRequestSerializer  # Используем существующий
-    permission_classes = [permissions.IsAuthenticated]
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-# Логин пользователя
 class UserLoginView(APIView):
     permission_classes = [permissions.AllowAny]
     
@@ -155,7 +191,8 @@ class UserLoginView(APIView):
                 'user': {
                     'id': user.id,
                     'username': user.username,
-                    'email': user.email
+                    'email': user.email,
+                    'role': user.role
                 },
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -165,3 +202,57 @@ class UserLoginView(APIView):
                 {'error': 'Неверные учетные данные'}, 
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
+
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class UserHelpRequestsView(generics.ListAPIView):
+    serializer_class = HelpRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return HelpRequest.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+class HelpRequestCreateView(generics.CreateAPIView):
+    serializer_class = HelpRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+# Admin views
+class AdminPendingFundsView(generics.ListAPIView):
+    """Список фондов на проверке для админа"""
+    serializer_class = CharityFundSerializer
+    permission_classes = [IsAdminUser]
+    
+    def get_queryset(self):
+        return CharityFund.objects.filter(status='pending').order_by('-created_at')
+
+
+class MyFundsView(generics.ListAPIView):
+    """Мои фонды для создателя"""
+    serializer_class = CharityFundSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return CharityFund.objects.filter(creator=self.request.user).order_by('-created_at')
+
+
+class MyFundraisersView(generics.ListAPIView):
+    """Мои сборы для создателя фонда"""
+    serializer_class = FundraiserSerializer
+    permission_classes = [IsFundCreator]
+    
+    def get_queryset(self):
+        # Возвращаем сборы всех фондов пользователя
+        user_funds = CharityFund.objects.filter(creator=self.request.user)
+        return Fundraiser.objects.filter(fund__in=user_funds).order_by('-created_at')

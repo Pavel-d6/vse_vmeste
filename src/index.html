@@ -25,8 +25,8 @@
                         <button class="btn-auth btn-primary" onclick="showAuthModal('register')">Регистрация</button>
                     </div>
                     <div id="user-profile" style="display: none;">
-                        <span id="username-display" style="margin-right: 10px;"></span>
-                        <button class="btn-auth" onclick="showProfileModal()">Личный кабинет</button>
+                        <span id="username-display" style="margin-right: 10px; font-weight: 600;"></span>
+                        <button class="nav-btn" onclick="showProfilePage()">👤 Личный кабинет</button>
                         <button class="btn-auth" onclick="logout()">Выйти</button>
                     </div>
                 </div>
@@ -75,7 +75,8 @@
             <section id="funds-page" class="page">
                 <div class="container">
                     <h1>Благотворительные фонды</h1>
-                    <button id="add-fund-btn" class="btn-primary" style="margin-top: 1rem;">➕ Добавить фонд</button>
+                    <p style="color: white; margin: 1rem 0;">Нажмите на карточку фонда, чтобы увидеть его активные сборы</p>
+                    <button id="add-fund-btn" class="btn-primary" style="margin-top: 1rem;">➕ Подать заявку на фонд</button>
                     <div id="funds-list" class="funds-grid">
                         <!-- Фонды появятся здесь -->
                     </div>
@@ -90,16 +91,28 @@
                         <p><strong>Все вместе</strong> - это платформа для взаимопомощи между людьми.</p>
                         <p>Здесь вы можете:</p>
                         <ul>
-                            <li>📍 Создать заявку о помощи</li>
+                            <li>📍 Создать заявку о помощи (для обычных пользователей)</li>
                             <li>🗺️ Найти заявки рядом с вами</li>
                             <li>🤝 Помочь другим людям</li>
-                            <li>🏛️ Узнать о благотворительных фондах</li>
+                            <li>🏛️ Подать заявку на создание благотворительного фонда</li>
+                            <li>💰 Поддержать активные сборы фондов</li>
                         </ul>
-                        <h3 style="margin-top: 2rem;">Как это работает?</h3>
-                        <p>1. Зарегистрируйтесь в системе</p>
-                        <p>2. Создайте заявку с описанием нужной помощи</p>
-                        <p>3. Укажите точный адрес для отображения на карте</p>
-                        <p>4. Другие пользователи увидят вашу заявку и смогут помочь</p>
+                        <h3>Типы аккаунтов:</h3>
+                        <ul>
+                            <li>👤 <strong>Обычный пользователь</strong> - может создавать заявки на помощь, просматривать карту и фонды</li>
+                            <li>🏛️ <strong>Создатель фонда</strong> - управляет своими фондами и создает сборы средств (назначается автоматически после одобрения фонда администратором)</li>
+                            <li>⭐ <strong>Администратор</strong> - проверяет и одобряет заявки на создание фондов</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- СТРАНИЦА ЛИЧНОГО КАБИНЕТА -->
+            <section id="profile-page" class="page">
+                <div class="container">
+                    <h1>Личный кабинет</h1>
+                    <div id="profile-content">
+                        <p style="text-align: center; padding: 2rem;">Загрузка...</p>
                     </div>
                 </div>
             </section>
@@ -125,20 +138,30 @@
                     </div>
                     <div id="register-form" style="display: none;">
                         <div class="form-group">
+                            <label>Тип аккаунта:</label>
+                            <select id="register-account-type" required>
+                                <option value="user">👤 Обычный пользователь (могу создавать заявки на помощь)</option>
+                                <option value="fund">🏛️ Аккаунт фонда (хочу создать благотворительный фонд)</option>
+                            </select>
+                            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                                ℹ️ Обычные пользователи могут создавать заявки на помощь. Аккаунты фондов могут создавать сборы средств после проверки администратором.
+                            </p>
+                        </div>
+                        <div class="form-group">
                             <label>Имя пользователя:</label>
-                            <input type="text" id="register-username">
+                            <input type="text" id="register-username" required>
                         </div>
                         <div class="form-group">
                             <label>Email:</label>
-                            <input type="email" id="register-email">
+                            <input type="email" id="register-email" required>
                         </div>
                         <div class="form-group">
                             <label>Пароль:</label>
-                            <input type="password" id="register-password">
+                            <input type="password" id="register-password" required>
                         </div>
                         <div class="form-group">
                             <label>Повторите пароль:</label>
-                            <input type="password" id="register-password2">
+                            <input type="password" id="register-password2" required>
                         </div>
                     </div>
                     <button type="button" class="btn-primary" id="auth-submit-btn">Войти</button>

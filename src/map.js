@@ -44,7 +44,6 @@ class MapManager {
                 this.isMapLoaded = true;
                 console.log("✅ Карта создана");
 
-                // Обновляем метки после загрузки карты
                 this.updateMapMarkers();
 
             } catch (error) {
@@ -61,43 +60,67 @@ class MapManager {
         
         console.log("🔄 Обновляем метки...");
         
-        // Очищаем старые метки
         this.map.geoObjects.removeAll();
         
         const requests = filteredRequests || this.app.helpRequests;
-        let addedMarkers = 0;
+        console.log(`📍 Обрабатываем ${requests.length} заявок`);
         
-        // Добавляем новые метки
+        // Группируем заявки по координатам
+        const groupedRequests = {};
+        
         requests.forEach((request) => {
             if (!request.latitude || !request.longitude) {
                 console.log(`❌ Нет координат: ${request.title}`);
                 return;
             }
 
-            const categoryDisplay = this.getCategoryDisplay(request.category);
-            const urgencyDisplay = this.getUrgencyDisplay(request.urgency);
-
+            // Создаем ключ координат (округляем до 4 знаков)
+            const coordKey = `${request.latitude.toFixed(4)}_${request.longitude.toFixed(4)}`;
+            
+            if (!groupedRequests[coordKey]) {
+                groupedRequests[coordKey] = [];
+            }
+            
+            groupedRequests[coordKey].push(request);
+        });
+        
+        console.log(`🗂️ Создано ${Object.keys(groupedRequests).length} групп меток`);
+        
+        let addedMarkers = 0;
+        
+        // Создаем метки для каждой группы
+        Object.values(groupedRequests).forEach((requestGroup) => {
+            const firstRequest = requestGroup[0];
+            const coords = [firstRequest.latitude, firstRequest.longitude];
+            
+            // Определяем цвет метки по максимальной срочности в группе
+            const maxUrgency = this.getMaxUrgency(requestGroup.map(r => r.urgency));
+            
+            // Создаем содержимое балуна
+            let balloonContent = '';
+            
+            if (requestGroup.length === 1) {
+                // Одна заявка - обычный балун
+                const req = requestGroup[0];
+                balloonContent = this.createSingleRequestBalloon(req);
+            } else {
+                // Несколько заявок - список
+                balloonContent = this.createMultipleRequestsBalloon(requestGroup);
+            }
+            
             const placemark = new ymaps.Placemark(
-                [request.latitude, request.longitude],
+                coords,
                 {
-                    balloonContentHeader: `<strong>${request.title}</strong>`,
-                    balloonContentBody: `
-                        <div style="padding: 10px; max-width: 300px;">
-                            <p style="margin: 5px 0;"><strong>Категория:</strong> ${categoryDisplay}</p>
-                            <p style="margin: 5px 0;"><strong>Срочность:</strong> ${urgencyDisplay}</p>
-                            <p style="margin: 5px 0;"><strong>Адрес:</strong> ${request.address}</p>
-                            <p style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">${request.description}</p>
-                            <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
-                                <p style="margin: 5px 0;"><strong>Контакт:</strong> ${request.contact_name}</p>
-                                <p style="margin: 5px 0;"><strong>Телефон:</strong> <a href="tel:${request.contact_phone}">${request.contact_phone}</a></p>
-                                ${request.contact_email ? `<p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${request.contact_email}">${request.contact_email}</a></p>` : ''}
-                            </div>
-                        </div>
-                    `,
-                    hintContent: request.title
+                    balloonContentHeader: requestGroup.length === 1 
+                        ? `<strong>${firstRequest.title}</strong>`
+                        : `<strong>📍 ${requestGroup.length} заявок на этом адресе</strong>`,
+                    balloonContentBody: balloonContent,
+                    hintContent: requestGroup.length === 1 
+                        ? firstRequest.title
+                        : `${requestGroup.length} заявок: ${firstRequest.address}`
                 },
                 {
-                    preset: this.getPresetByUrgency(request.urgency),
+                    preset: this.getPresetByUrgency(maxUrgency),
                     balloonCloseButton: true,
                     hideIconOnBalloonOpen: false
                 }
@@ -109,13 +132,81 @@ class MapManager {
         
         console.log(`✅ Добавлено меток: ${addedMarkers}`);
         
-        // Автоматически подстраиваем масштаб карты под метки
-        if (addedMarkers > 0) {
+        // Автоматически подстраиваем масштаб
+        if (addedMarkers > 0 && this.map.geoObjects.getBounds()) {
             this.map.setBounds(this.map.geoObjects.getBounds(), {
                 checkZoomRange: true,
                 zoomMargin: 50
             });
         }
+    }
+
+    createSingleRequestBalloon(req) {
+        const categoryDisplay = this.getCategoryDisplay(req.category);
+        const urgencyDisplay = this.getUrgencyDisplay(req.urgency);
+        
+        return `
+            <div style="padding: 10px; max-width: 300px;">
+                <p style="margin: 5px 0;"><strong>Категория:</strong> ${categoryDisplay}</p>
+                <p style="margin: 5px 0;"><strong>Срочность:</strong> ${urgencyDisplay}</p>
+                <p style="margin: 5px 0;"><strong>Адрес:</strong> ${req.address}</p>
+                <p style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">${req.description}</p>
+                <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+                    <p style="margin: 5px 0;"><strong>Контакт:</strong> ${req.contact_name}</p>
+                    <p style="margin: 5px 0;"><strong>Телефон:</strong> <a href="tel:${req.contact_phone}">${req.contact_phone}</a></p>
+                    ${req.contact_email ? `<p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${req.contact_email}">${req.contact_email}</a></p>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    createMultipleRequestsBalloon(requests) {
+        let html = `<div style="padding: 10px; max-width: 350px; max-height: 400px; overflow-y: auto;">`;
+        html += `<p style="margin-bottom: 10px; color: #666;">Адрес: ${requests[0].address}</p>`;
+        
+        requests.forEach((req, index) => {
+            const categoryDisplay = this.getCategoryDisplay(req.category);
+            const urgencyDisplay = this.getUrgencyDisplay(req.urgency);
+            
+            html += `
+                <div style="border: 2px solid #e9ecef; border-radius: 8px; padding: 10px; margin-bottom: 10px; background: white;">
+                    <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${index + 1}. ${req.title}</h4>
+                    <p style="margin: 3px 0; font-size: 0.9em;"><strong>Категория:</strong> ${categoryDisplay}</p>
+                    <p style="margin: 3px 0; font-size: 0.9em;"><strong>Срочность:</strong> ${urgencyDisplay}</p>
+                    <p style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${req.description}</p>
+                    <div style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; font-size: 0.9em;">
+                        <p style="margin: 3px 0;"><strong>Контакт:</strong> ${req.contact_name}</p>
+                        <p style="margin: 3px 0;"><strong>Телефон:</strong> <a href="tel:${req.contact_phone}">${req.contact_phone}</a></p>
+                        ${req.contact_email ? `<p style="margin: 3px 0;"><strong>Email:</strong> <a href="mailto:${req.contact_email}">${req.contact_email}</a></p>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+        return html;
+    }
+
+    getMaxUrgency(urgencies) {
+        const urgencyPriority = {
+            'critical': 4,
+            'high': 3,
+            'medium': 2,
+            'low': 1
+        };
+        
+        let maxPriority = 0;
+        let maxUrgency = 'low';
+        
+        urgencies.forEach(urgency => {
+            const priority = urgencyPriority[urgency] || 0;
+            if (priority > maxPriority) {
+                maxPriority = priority;
+                maxUrgency = urgency;
+            }
+        });
+        
+        return maxUrgency;
     }
 
     getCategoryDisplay(category) {
