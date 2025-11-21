@@ -1,222 +1,242 @@
-// ui.js - Интерфейс
-class UIManager {
+// map.js - Яндекс.Карты
+class MapManager {
     constructor(app) {
         this.app = app;
+        this.map = null;
+        this.isMapLoaded = false;
     }
 
-    initNavigation() {
-        const navButtons = document.querySelectorAll('.nav-btn');
-        navButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const pageId = e.target.dataset.page;
-                this.showPage(pageId);
-                
-                if (pageId === 'funds') {
-                    this.app.api.loadFunds();
-                }
-            });
-        });
+    initYandexMaps() {
+        console.log("🗺️ Инициализируем карту...");
         
-        // Инициализируем фильтры
-        this.initFilters();
-    }
-
-    showPage(pageId) {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-        
-        const targetBtn = document.querySelector(`.nav-btn[data-page="${pageId}"]`);
-        const targetPage = document.getElementById(`${pageId}-page`);
-        
-        if (targetBtn) targetBtn.classList.add('active');
-        if (targetPage) targetPage.classList.add('active');
-    }
-
-    initButtons() {
-        const addFundBtn = document.getElementById('add-fund-btn');
-        if (addFundBtn) {
-            addFundBtn.addEventListener('click', () => {
-                this.showAddFundForm();
-            });
-        }
-    }
-
-    showAddFundForm() {
-        if (!this.app.currentUser) {
-            this.showModal('Требуется авторизация', 
-                '<p>Для подачи заявки на фонд необходимо войти в систему</p>' +
-                '<button class="btn-primary" onclick="window.app.auth.showAuthModal(\'login\'); window.app.ui.hideModal()">Войти</button>'
-            );
+        if (typeof ymaps !== 'undefined') {
+            this.initMap();
             return;
         }
-        
-        const formHtml = `
-            <form id="add-fund-form">
-                <div class="form-group">
-                    <label>Название фонда:</label>
-                    <input type="text" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label>Описание:</label>
-                    <textarea name="description" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Веб-сайт:</label>
-                    <input type="url" name="website" placeholder="https://example.com">
-                </div>
-                <div class="form-group">
-                    <label>Контактный email:</label>
-                    <input type="email" name="contact_email" required>
-                </div>
-                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="window.app.ui.hideModal()">Отмена</button>
-                    <button type="submit" class="btn-primary">Подать заявку</button>
-                </div>
-            </form>
-        `;
-        
-        this.showModal('Подать заявку на создание фонда', formHtml);
-        
-        setTimeout(() => {
-            const form = document.getElementById('add-fund-form');
-            if (form) {
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    await this.app.api.createFund(new FormData(e.target));
-                });
+
+        const checkInterval = setInterval(() => {
+            if (typeof ymaps !== 'undefined') {
+                clearInterval(checkInterval);
+                this.initMap();
             }
         }, 100);
     }
 
-    initModal() {
-        this.modal = document.getElementById('modal');
-        if (this.modal) {
-            const closeBtn = this.modal.querySelector('#modal-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    this.hideModal();
-                });
-            }
-            
-            this.modal.addEventListener('click', (e) => {
-                if (e.target === this.modal) {
-                    this.hideModal();
-                }
-            });
-        }
-    }
-
-    showModal(title, content) {
-        const modalTitle = document.getElementById('modal-title');
-        const modalBody = document.getElementById('modal-body');
-        if (modalTitle && modalBody && this.modal) {
-            modalTitle.textContent = title;
-            modalBody.innerHTML = content;
-            this.modal.style.display = 'flex';
-        }
-    }
-
-    hideModal() {
-        if (this.modal) {
-            this.modal.style.display = 'none';
-        }
-    }
-
-    updateStats() {
-        const element = document.getElementById('requests-count');
-        if (element) {
-            const filtered = this.getFilteredRequests();
-            const total = this.app.helpRequests.length;
-            
-            if (filtered.length !== total) {
-                element.textContent = `Заявок: ${filtered.length} из ${total}`;
-            } else {
-                element.textContent = `Заявок: ${total}`;
-            }
-        }
-    }
-
-    displayFunds(funds) {
-        const fundsList = document.getElementById('funds-list');
-        if (!fundsList) return;
-
-        if (!funds || funds.length === 0) {
-            fundsList.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 3rem; background: white; border-radius: 12px;">
-                    <p style="font-size: 1.2rem; color: #666; margin-bottom: 1rem;">📋 Пока нет благотворительных фондов</p>
-                    <p style="color: #999;">Одобренные фонды появятся здесь</p>
-                </div>
-            `;
+    initMap() {
+        if (typeof ymaps === 'undefined') {
+            console.error("❌ Яндекс.Карты не доступны");
             return;
         }
 
-        fundsList.innerHTML = funds.map(fund => `
-            <div class="fund-card" onclick="window.app.showFundDetails(${fund.id})" style="cursor: pointer;">
-                ${fund.image_url ? `<img src="${fund.image_url}" alt="${fund.name}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">` : ''}
-                <h3 style="margin-bottom: 0.5rem; color: #2c3e50;">${fund.name}</h3>
-                <p style="color: #666; margin-bottom: 1rem; line-height: 1.5;">${fund.description}</p>
-                <div style="border-top: 1px solid #eee; padding-top: 1rem; margin-top: 1rem;">
-                    ${fund.website ? `<p style="margin-bottom: 0.5rem;"><span style="color: #667eea;">🌐 Сайт фонда</span></p>` : ''}
-                    ${fund.contact_email ? `<p style="margin-bottom: 0.5rem; color: #666;">📧 ${fund.contact_email}</p>` : ''}
-                    <p style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">Создатель: ${fund.creator_username || 'Неизвестен'}</p>
-                    <button class="btn-primary" style="margin-top: 0.5rem; width: 100%;" onclick="event.stopPropagation(); window.app.showFundDetails(${fund.id})">
-                        Посмотреть сборы 💰
-                    </button>
+        ymaps.ready(() => {
+            try {
+                const mapElement = document.getElementById('map');
+                if (!mapElement) return;
+
+                mapElement.innerHTML = '';
+                
+                this.map = new ymaps.Map('map', {
+                    center: [55.7558, 37.6173],
+                    zoom: 10,
+                    controls: ['zoomControl', 'fullscreenControl', 'geolocationControl']
+                });
+
+                this.isMapLoaded = true;
+                console.log("✅ Карта создана");
+
+                this.updateMapMarkers();
+
+            } catch (error) {
+                console.error("❌ Ошибка создания карты:", error);
+            }
+        });
+    }
+
+    updateMapMarkers(filteredRequests = null) {
+        if (!this.map || !this.isMapLoaded) {
+            console.log("❌ Карта не готова для меток");
+            return;
+        }
+        
+        console.log("🔄 Обновляем метки...");
+        
+        this.map.geoObjects.removeAll();
+        
+        const requests = filteredRequests || this.app.helpRequests;
+        console.log(`📍 Обрабатываем ${requests.length} заявок`);
+        
+        // Группируем заявки по координатам
+        const groupedRequests = {};
+        
+        requests.forEach((request) => {
+            if (!request.latitude || !request.longitude) {
+                console.log(`❌ Нет координат: ${request.title}`);
+                return;
+            }
+
+            // Создаем ключ координат (округляем до 4 знаков)
+            const coordKey = `${request.latitude.toFixed(4)}_${request.longitude.toFixed(4)}`;
+            
+            if (!groupedRequests[coordKey]) {
+                groupedRequests[coordKey] = [];
+            }
+            
+            groupedRequests[coordKey].push(request);
+        });
+        
+        console.log(`🗂️ Создано ${Object.keys(groupedRequests).length} групп меток`);
+        
+        let addedMarkers = 0;
+        
+        // Создаем метки для каждой группы
+        Object.values(groupedRequests).forEach((requestGroup) => {
+            const firstRequest = requestGroup[0];
+            const coords = [firstRequest.latitude, firstRequest.longitude];
+            
+            // Определяем цвет метки по максимальной срочности в группе
+            const maxUrgency = this.getMaxUrgency(requestGroup.map(r => r.urgency));
+            
+            // Создаем содержимое балуна
+            let balloonContent = '';
+            
+            if (requestGroup.length === 1) {
+                // Одна заявка - обычный балун
+                const req = requestGroup[0];
+                balloonContent = this.createSingleRequestBalloon(req);
+            } else {
+                // Несколько заявок - список
+                balloonContent = this.createMultipleRequestsBalloon(requestGroup);
+            }
+            
+            const placemark = new ymaps.Placemark(
+                coords,
+                {
+                    balloonContentHeader: requestGroup.length === 1 
+                        ? `<strong>${firstRequest.title}</strong>`
+                        : `<strong>📍 ${requestGroup.length} заявок на этом адресе</strong>`,
+                    balloonContentBody: balloonContent,
+                    hintContent: requestGroup.length === 1 
+                        ? firstRequest.title
+                        : `${requestGroup.length} заявок: ${firstRequest.address}`
+                },
+                {
+                    preset: this.getPresetByUrgency(maxUrgency),
+                    balloonCloseButton: true,
+                    hideIconOnBalloonOpen: false
+                }
+            );
+            
+            this.map.geoObjects.add(placemark);
+            addedMarkers++;
+        });
+        
+        console.log(`✅ Добавлено меток: ${addedMarkers}`);
+        
+        // Автоматически подстраиваем масштаб
+        if (addedMarkers > 0 && this.map.geoObjects.getBounds()) {
+            this.map.setBounds(this.map.geoObjects.getBounds(), {
+                checkZoomRange: true,
+                zoomMargin: 50
+            });
+        }
+    }
+
+    createSingleRequestBalloon(req) {
+        const categoryDisplay = this.getCategoryDisplay(req.category);
+        const urgencyDisplay = this.getUrgencyDisplay(req.urgency);
+        
+        return `
+            <div style="padding: 10px; max-width: 300px;">
+                <p style="margin: 5px 0;"><strong>Категория:</strong> ${categoryDisplay}</p>
+                <p style="margin: 5px 0;"><strong>Срочность:</strong> ${urgencyDisplay}</p>
+                <p style="margin: 5px 0;"><strong>Адрес:</strong> ${req.address}</p>
+                <p style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">${req.description}</p>
+                <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+                    <p style="margin: 5px 0;"><strong>Контакт:</strong> ${req.contact_name}</p>
+                    <p style="margin: 5px 0;"><strong>Телефон:</strong> <a href="tel:${req.contact_phone}">${req.contact_phone}</a></p>
+                    ${req.contact_email ? `<p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${req.contact_email}">${req.contact_email}</a></p>` : ''}
                 </div>
             </div>
-        `).join('');
+        `;
     }
 
-    initFilters() {
-        console.log('🔧 Инициализация фильтров...');
+    createMultipleRequestsBalloon(requests) {
+        let html = `<div style="padding: 10px; max-width: 350px; max-height: 400px; overflow-y: auto;">`;
+        html += `<p style="margin-bottom: 10px; color: #666;">Адрес: ${requests[0].address}</p>`;
         
-        const categoryFilter = document.getElementById('category-filter');
-        const urgencyFilter = document.getElementById('urgency-filter');
+        requests.forEach((req, index) => {
+            const categoryDisplay = this.getCategoryDisplay(req.category);
+            const urgencyDisplay = this.getUrgencyDisplay(req.urgency);
+            
+            html += `
+                <div style="border: 2px solid #e9ecef; border-radius: 8px; padding: 10px; margin-bottom: 10px; background: white;">
+                    <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${index + 1}. ${req.title}</h4>
+                    <p style="margin: 3px 0; font-size: 0.9em;"><strong>Категория:</strong> ${categoryDisplay}</p>
+                    <p style="margin: 3px 0; font-size: 0.9em;"><strong>Срочность:</strong> ${urgencyDisplay}</p>
+                    <p style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.9em;">${req.description}</p>
+                    <div style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; font-size: 0.9em;">
+                        <p style="margin: 3px 0;"><strong>Контакт:</strong> ${req.contact_name}</p>
+                        <p style="margin: 3px 0;"><strong>Телефон:</strong> <a href="tel:${req.contact_phone}">${req.contact_phone}</a></p>
+                        ${req.contact_email ? `<p style="margin: 3px 0;"><strong>Email:</strong> <a href="mailto:${req.contact_email}">${req.contact_email}</a></p>` : ''}
+                    </div>
+                </div>
+            `;
+        });
         
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', () => {
-                console.log('📊 Фильтр категории изменен:', categoryFilter.value);
-                this.applyFilters();
-            });
-        }
-        
-        if (urgencyFilter) {
-            urgencyFilter.addEventListener('change', () => {
-                console.log('⚡ Фильтр срочности изменен:', urgencyFilter.value);
-                this.applyFilters();
-            });
-        }
-        
-        console.log('✅ Фильтры инициализированы');
+        html += `</div>`;
+        return html;
     }
 
-    getFilteredRequests() {
-        const category = document.getElementById('category-filter')?.value;
-        const urgency = document.getElementById('urgency-filter')?.value;
+    getMaxUrgency(urgencies) {
+        const urgencyPriority = {
+            'critical': 4,
+            'high': 3,
+            'medium': 2,
+            'low': 1
+        };
         
-        console.log('🔍 Применяем фильтры. Категория:', category || 'все', 'Срочность:', urgency || 'все');
+        let maxPriority = 0;
+        let maxUrgency = 'low';
         
-        let filtered = [...this.app.helpRequests];
+        urgencies.forEach(urgency => {
+            const priority = urgencyPriority[urgency] || 0;
+            if (priority > maxPriority) {
+                maxPriority = priority;
+                maxUrgency = urgency;
+            }
+        });
         
-        if (category && category !== '') {
-            filtered = filtered.filter(r => r.category === category);
-            console.log('  → После фильтра категории:', filtered.length);
-        }
-        
-        if (urgency && urgency !== '') {
-            filtered = filtered.filter(r => r.urgency === urgency);
-            console.log('  → После фильтра срочности:', filtered.length);
-        }
-        
-        console.log('✅ Отфильтровано заявок:', filtered.length, 'из', this.app.helpRequests.length);
-        
-        return filtered;
+        return maxUrgency;
     }
 
-    applyFilters() {
-        console.log('🎯 Применяем фильтры...');
-        const filtered = this.getFilteredRequests();
-        this.app.map.updateMapMarkers(filtered);
-        this.updateStats();
+    getCategoryDisplay(category) {
+        const categories = {
+            'food': '🍎 Еда',
+            'clothes': '👕 Одежда', 
+            'medicine': '💊 Лекарства',
+            'household': '🏠 Хозтовары',
+            'other': '❔ Другое'
+        };
+        return categories[category] || category;
+    }
+
+    getUrgencyDisplay(urgency) {
+        const urgencies = {
+            'low': '📗 Не срочно',
+            'medium': '📐 Средняя',
+            'high': '📙 Срочно', 
+            'critical': '📕 Очень срочно'
+        };
+        return urgencies[urgency] || urgency;
+    }
+
+    getPresetByUrgency(urgency) {
+        const presets = {
+            'critical': 'islands#redIcon',
+            'high': 'islands#orangeIcon', 
+            'medium': 'islands#blueIcon',
+            'low': 'islands#greenIcon'
+        };
+        return presets[urgency] || 'islands#blueIcon';
     }
 }
