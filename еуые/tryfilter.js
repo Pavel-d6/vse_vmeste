@@ -4,11 +4,16 @@ class MapManager {
         this.app = app;
         this.map = null;
         this.isMapLoaded = false;
+        this.activeFilters = {
+            category: '',
+            urgency: ''
+        };
+        this.allPlacemarks = []; // Храним все метки для фильтрации
     }
 
     initYandexMaps() {
         console.log("🗺️ Инициализируем карту...");
-
+        
         if (typeof ymaps !== 'undefined') {
             this.initMap();
             return;
@@ -34,7 +39,7 @@ class MapManager {
                 if (!mapElement) return;
 
                 mapElement.innerHTML = '';
-
+                
                 this.map = new ymaps.Map('map', {
                     center: [55.7558, 37.6173],
                     zoom: 10,
@@ -44,6 +49,8 @@ class MapManager {
                 this.isMapLoaded = true;
                 console.log("✅ Карта создана");
 
+                // Инициализируем фильтры после создания карты
+                this.initFilters();
                 // Обновляем метки после загрузки карты
                 this.updateMapMarkers();
 
@@ -53,20 +60,99 @@ class MapManager {
         });
     }
 
+    // Инициализация обработчиков фильтров
+    initFilters() {
+        const categoryFilter = document.getElementById('category-filter');
+        const urgencyFilter = document.getElementById('urgency-filter');
+
+        if (categoryFilter && urgencyFilter) {
+            categoryFilter.addEventListener('change', (e) => {
+                this.activeFilters.category = e.target.value;
+                this.applyFilters();
+            });
+
+            urgencyFilter.addEventListener('change', (e) => {
+                this.activeFilters.urgency = e.target.value;
+                this.applyFilters();
+            });
+
+            console.log("✅ Фильтры инициализированы");
+        } else {
+            console.log("❌ Элементы фильтров не найдены");
+        }
+    }
+
+    // Применение фильтров к меткам
+    applyFilters() {
+        if (!this.map || !this.isMapLoaded) return;
+
+        console.log("🔍 Применяем фильтры:", this.activeFilters);
+
+        let visibleMarkersCount = 0;
+
+        this.allPlacemarks.forEach(placemark => {
+            const properties = placemark.properties;
+            const category = properties.get('category');
+            const urgency = properties.get('urgency');
+            
+            let showObject = true;
+            
+            // Проверяем фильтр категории
+            if (this.activeFilters.category && category !== this.activeFilters.category) {
+                showObject = false;
+            }
+            
+            // Проверяем фильтр срочности
+            if (this.activeFilters.urgency && urgency !== this.activeFilters.urgency) {
+                showObject = false;
+            }
+            
+            // Показываем или скрываем метку
+            placemark.options.set('visible', showObject);
+            
+            if (showObject) {
+                visibleMarkersCount++;
+            }
+        });
+
+        console.log(`✅ Видимых меток: ${visibleMarkersCount}`);
+
+        // Обновляем видимые границы карты
+        this.updateMapBounds();
+    }
+
+    // Обновление границ карты для видимых меток
+    updateMapBounds() {
+        const visiblePlacemarks = this.allPlacemarks.filter(placemark => 
+            placemark.options.get('visible')
+        );
+
+        if (visiblePlacemarks.length > 0) {
+            const collection = new ymaps.GeoObjectCollection();
+            visiblePlacemarks.forEach(placemark => collection.add(placemark));
+            
+            this.map.setBounds(collection.getBounds(), {
+                checkZoomRange: true,
+                zoomMargin: 50
+            });
+        }
+    }
+
     updateMapMarkers(filteredRequests = null) {
         if (!this.map || !this.isMapLoaded) {
             console.log("❌ Карта не готова для меток");
             return;
         }
-
+        
         console.log("🔄 Обновляем метки...");
-
+        
         // Очищаем старые метки
         this.map.geoObjects.removeAll();
-
+        this.allPlacemarks = [];
+        
         const requests = filteredRequests || this.app.helpRequests;
         let addedMarkers = 0;
-
+        
         // Добавляем новые метки
         requests.forEach((request) => {
             if (!request.latitude || !request.longitude) {
@@ -94,34 +180,53 @@ class MapManager {
                             </div>
                         </div>
                     `,
-                    hintContent: request.title
+                    hintContent: request.title,
+                    // Добавляем свойства для фильтрации
+                    category: request.category,
+                    urgency: request.urgency
                 },
                 {
                     preset: this.getPresetByUrgency(request.urgency),
                     balloonCloseButton: true,
-                    hideIconOnBalloonOpen: false
+                    hideIconOnBalloonOpen: false,
+                    visible: true // По умолчанию все метки видны
                 }
             );
-
+            
             this.map.geoObjects.add(placemark);
+            this.allPlacemarks.push(placemark);
             addedMarkers++;
         });
-
+        
         console.log(`✅ Добавлено меток: ${addedMarkers}`);
+        
+        // Применяем текущие фильтры после добавления меток
+        this.applyFilters();
+    }
 
-        // Автоматически подстраиваем масштаб карты под метки
-        if (addedMarkers > 0) {
-            this.map.setBounds(this.map.geoObjects.getBounds(), {
-                checkZoomRange: true,
-                zoomMargin: 50
-            });
-        }
+    // Сброс фильтров (можно вызвать извне)
+    resetFilters() {
+        this.activeFilters.category = '';
+        this.activeFilters.urgency = '';
+        
+        const categoryFilter = document.getElementById('category-filter');
+        const urgencyFilter = document.getElementById('urgency-filter');
+        
+        if (categoryFilter) categoryFilter.value = '';
+        if (urgencyFilter) urgencyFilter.value = '';
+        
+        this.applyFilters();
+    }
+
+    // Получение текущих активных фильтров
+    getActiveFilters() {
+        return { ...this.activeFilters };
     }
 
     getCategoryDisplay(category) {
         const categories = {
             'food': '🍎 Еда',
-            'clothes': '👕 Одежда',
+            'clothes': '👕 Одежда', 
             'medicine': '💊 Лекарства',
             'household': '🏠 Хозтовары',
             'other': '❔ Другое'
@@ -133,7 +238,7 @@ class MapManager {
         const urgencies = {
             'low': '📗 Не срочно',
             'medium': '📐 Средняя',
-            'high': '📙 Срочно',
+            'high': '📙 Срочно', 
             'critical': '📕 Очень срочно'
         };
         return urgencies[urgency] || urgency;
@@ -142,7 +247,7 @@ class MapManager {
     getPresetByUrgency(urgency) {
         const presets = {
             'critical': 'islands#redIcon',
-            'high': 'islands#orangeIcon',
+            'high': 'islands#orangeIcon', 
             'medium': 'islands#blueIcon',
             'low': 'islands#greenIcon'
         };

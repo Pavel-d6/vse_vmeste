@@ -105,8 +105,7 @@ class CharityApp {
                     <label>Email:</label>
                     <input type="email" name="contact_email" placeholder="email@example.com" value="${this.currentUser.email || ''}">
                 </div>
-                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="window.app.ui.hideModal()">Отмена</button>
+                <div style="gap: 1rem; margin-top: 1rem;">
                     <button type="submit" class="btn-primary">Создать заявку</button>
                 </div>
             </form>

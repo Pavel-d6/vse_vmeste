@@ -60,7 +60,6 @@ class UIManager {
                     <input type="email" name="contact_email">
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="window.app.ui.hideModal()">Отмена</button>
                     <button type="submit" class="btn-primary">Добавить фонд</button>
                 </div>
             </form>
