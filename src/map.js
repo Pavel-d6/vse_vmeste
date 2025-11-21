@@ -8,7 +8,7 @@ class MapManager {
 
     initYandexMaps() {
         console.log("🗺️ Инициализируем карту...");
-        
+
         if (typeof ymaps !== 'undefined') {
             this.initMap();
             return;
@@ -34,7 +34,7 @@ class MapManager {
                 if (!mapElement) return;
 
                 mapElement.innerHTML = '';
-                
+
                 this.map = new ymaps.Map('map', {
                     center: [55.7558, 37.6173],
                     zoom: 10,
@@ -57,17 +57,15 @@ class MapManager {
             console.log("❌ Карта не готова для меток");
             return;
         }
-        
+
         console.log("🔄 Обновляем метки...");
-        
         this.map.geoObjects.removeAll();
-        
+
         const requests = filteredRequests || this.app.helpRequests;
         console.log(`📍 Обрабатываем ${requests.length} заявок`);
         
         // Группируем заявки по координатам
         const groupedRequests = {};
-        
         requests.forEach((request) => {
             if (!request.latitude || !request.longitude) {
                 console.log(`❌ Нет координат: ${request.title}`);
@@ -125,12 +123,13 @@ class MapManager {
                     hideIconOnBalloonOpen: false
                 }
             );
-            
+
             this.map.geoObjects.add(placemark);
             addedMarkers++;
         });
-        
+
         console.log(`✅ Добавлено меток: ${addedMarkers}`);
+
         
         // Автоматически подстраиваем масштаб
         if (addedMarkers > 0 && this.map.geoObjects.getBounds()) {
@@ -212,7 +211,7 @@ class MapManager {
     getCategoryDisplay(category) {
         const categories = {
             'food': '🍎 Еда',
-            'clothes': '👕 Одежда', 
+            'clothes': '👕 Одежда',
             'medicine': '💊 Лекарства',
             'household': '🏠 Хозтовары',
             'other': '❔ Другое'
@@ -224,7 +223,7 @@ class MapManager {
         const urgencies = {
             'low': '📗 Не срочно',
             'medium': '📐 Средняя',
-            'high': '📙 Срочно', 
+            'high': '📙 Срочно',
             'critical': '📕 Очень срочно'
         };
         return urgencies[urgency] || urgency;
@@ -233,7 +232,7 @@ class MapManager {
     getPresetByUrgency(urgency) {
         const presets = {
             'critical': 'islands#redIcon',
-            'high': 'islands#orangeIcon', 
+            'high': 'islands#orangeIcon',
             'medium': 'islands#blueIcon',
             'low': 'islands#greenIcon'
         };
