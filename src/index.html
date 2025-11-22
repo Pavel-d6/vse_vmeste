@@ -4,19 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Все вместе - Карта взаимопомощи</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="base.css">
+    <link rel="stylesheet" href="buttons.css">
+    <link rel="stylesheet" href="map.css">
+    <link rel="stylesheet" href="modal.css">
+    <link rel="stylesheet" href="funds.css">
+    <link rel="stylesheet" href="auth.css">
+    <link rel="stylesheet" href="forms.css">
+    <link rel="stylesheet" href="lk.css">
+    <link rel="stylesheet" href="about.css">
+    <link rel="icon" href="images/favicon.png">
     <script src="https://api-maps.yandex.ru/2.1/?apikey=f1b67a21-0ce5-4416-857a-838e9778a629&lang=ru_RU" type="text/javascript"></script>
 </head>
 <body>
     <div class="app">
         <!-- Шапка -->
-        <header class="header">
-            <div class="container">
+        <div class="header" style="padding: 1rem;">
+            <div class="container" style="max-width: none; justify-content: space-between;">
                 <div class="logo">Все вместе ♥</div>
                 <nav class="nav">
-                    <button class="nav-btn active" data-page="map">Карта помощи</button>
+                    <button class="nav-btn" data-page="map">Карта помощи</button>
                     <button class="nav-btn" data-page="funds">Фонды</button>
-                    <button class="nav-btn" data-page="about">О проекте</button>
+                    <button class="nav-btn active" data-page="about">О проекте</button>
                 </nav>
                 <!-- БЛОК АВТОРИЗАЦИИ -->
                 <div class="auth-section">
@@ -25,21 +34,28 @@
                         <button class="btn-auth btn-primary" onclick="showAuthModal('register')">Регистрация</button>
                     </div>
                     <div id="user-profile" style="display: none;">
-                        <span id="username-display" style="margin-right: 10px; font-weight: 600;"></span>
+                        <div class="username"><p id="username-display"></p></div>
+                        <!-- <span id="username-display" style="margin-right: 10px; vertical-align: middle; display: inline-block; background-color: #e67e22;"></span> -->
                         <button class="nav-btn" data-page="profile" onclick="loadProfilePage()">Личный кабинет</button>
                         <button class="btn-auth" onclick="logout()">Выйти</button>
                     </div>
                 </div>
             </div>
-        </header>
+        </div>
 
         <!-- Основной контент -->
         <main class="main">
             <!-- Страница карты -->
-            <section id="map-page" class="page active">
+            <section id="map-page" class="page">
                 <div class="container">
+                    <div class="funds-title">
+                        <section class="hero">
+                            <h1>Помогайте тем, кто рядом</h1>
+                            <p>Найдите людей в вашем районе, которым нужна помощь. Каждая заявка на карте - это реальный человек, который нуждается в поддержке.</p>
+                        </section>
+                    </div>
                     <div class="map-controls">
-                        <button id="create-request-btn" class="btn-primary" onclick="checkAuthBeforeCreate()">
+                        <button id="create-request-btn" class="btn-primary1" onclick="checkAuthBeforeCreate()">
                             ➕ Создать заявку
                         </button>
                         <div class="filters">
@@ -53,10 +69,10 @@
                             </select>
                             <select id="urgency-filter">
                                 <option value="">Любая срочность</option>
-                                <option value="critical">📕 Очень срочно</option>
-                                <option value="high">📙 Срочно</option>
-                                <option value="medium">📐 Средняя</option>
-                                <option value="low">📗 Не срочно</option>
+                                <option value="critical">🔴 Очень срочно</option>
+                                <option value="high">🟠 Срочно</option>
+                                <option value="medium">🟡 Средняя</option>
+                                <option value="low">🟢 Не срочно</option>
                             </select>
                         </div>
                     </div>
@@ -74,9 +90,13 @@
             <!-- Страница фондов -->
             <section id="funds-page" class="page">
                 <div class="container">
-                    <h1>Благотворительные фонды</h1>
-                    <p style="color: white; margin: 1rem 0;">Нажмите на карточку фонда, чтобы увидеть его активные сборы</p>
-                    <button id="add-fund-btn" class="btn-primary" style="margin-top: 1rem;">➕ Подать заявку на фонд</button>
+                    <div class="funds-title">
+                        <section class="hero">
+                            <h1>Благотворительные фонды</h1>
+                            <p>Поддержите проверенные благотворительные организации и помогите реализовать их важные проекты.</p>
+                        </section>
+                        <button id="add-fund-btn" class="btn-primary" style="margin-top: 1rem;">➕ Подать заявку на фонд</button>
+                    </div>
                     <div id="funds-list" class="funds-grid">
                         <!-- Фонды появятся здесь -->
                     </div>
@@ -84,37 +104,54 @@
             </section>
             
             <!-- Страница о проекте -->
-            <section id="about-page" class="page">
+            <section id="about-page" class="page active">
                 <div class="container">
-                    <h1>О проекте</h1>
                     <div class="about-content">
-                        <p><strong>Все вместе</strong> - это платформа для взаимопомощи между людьми.</p>
-                        <p>Здесь вы можете:</p>
-                        <ul>
-                            <li>📍 Создать заявку о помощи (для обычных пользователей)</li>
-                            <li>🗺️ Найти заявки рядом с вами</li>
-                            <li>🤝 Помочь другим людям</li>
-                            <li>🏛️ Подать заявку на создание благотворительного фонда</li>
-                            <li>💰 Поддержать активные сборы фондов</li>
-                        </ul>
-                        <h3>Типы аккаунтов:</h3>
-                        <ul>
-                            <li>👤 <strong>Обычный пользователь</strong> - может создавать заявки на помощь, просматривать карту и фонды</li>
-                            <li>🏛️ <strong>Создатель фонда</strong> - управляет своими фондами и создает сборы средств (назначается автоматически после одобрения фонда администратором)</li>
-                            <li>⭐ <strong>Администратор</strong> - проверяет и одобряет заявки на создание фондов</li>
-                        </ul>
+                        <h1>О проекте</h1>
+                        <div class="description">
+                            <div style="flex: 1;">
+                                <p><strong>Все вместе</strong> - это платформа для взаимопомощи между людьми.</p>
+                                <p>Здесь вы можете:</p>
+                                <ul>
+                                    <li>📍 Создать заявку о помощи (для обычных пользователей)</li>
+                                    <li>🗺️ Найти заявки рядом с вами</li>
+                                    <li>🤝 Помочь другим людям</li>
+                                    <li>🏛️ Подать заявку на создание благотворительного фонда</li>
+                                    <li>💰 Поддержать активные сборы фондов</li>
+                                </ul>
+                            </div>
+                            <div style="flex: 1;">
+                                <img src="images/logo.png" style="width: 100%; height: 100%;">
+                            </div>
+                        </div>
+                        <h2>Как это работает?</h2>
+                        
+                        <div class="steps">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <h3>Оставьте заявку</h3>
+                                <p>Расскажите, в чем вы нуждаетесь или что можете предложить.</p>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <h3>Найдите на карте</h3>
+                                <p>Увидьте заявки людей рядом с вами.</p>
+                            </div>
+                            
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <h3>Помогите</h3>
+                                <p>Свяжитесь с человеком и окажите поддержку.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <!-- СТРАНИЦА ЛИЧНОГО КАБИНЕТА -->
             <section id="profile-page" class="page">
-                <div class="container">
-                    <h1>Личный кабинет</h1>
-                    <div id="profile-content">
-                        <p style="text-align: center; padding: 2rem;">Загрузка...</p>
-                    </div>
-                </div>
+                
             </section>
         </main>
     </div>
@@ -195,7 +232,7 @@
     <div id="modal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3 id="modal-title">Заголовок</h3>
-            <div id="modal-body">Содержимое</div>
+            <div id="modal-body" style="margin: 1rem 0;">Содержимое</div>
             <button id="modal-close" class="btn-secondary">Закрыть</button>
         </div>
     </div>

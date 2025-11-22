@@ -1,0 +1,44 @@
+/* Стили для авторизации */
+.auth-section {
+    flex: 4;
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+
+.username {
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+#auth-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-auth {
+    padding: 0.6rem 1.2rem;
+    margin: 0 0.2rem;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.btn-auth:hover {
+    border-color: #667eea;
+    color: #667eea;
+    transform: translateY(-1px);
+}
+
+.btn-auth.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}

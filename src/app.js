@@ -43,7 +43,7 @@ class CharityApp {
         if (!this.currentUser) {
             this.ui.showModal('Требуется авторизация', 
                 '<p>Для создания заявки необходимо войти в систему</p>' +
-                '<button class="btn-primary" onclick="window.app.auth.showAuthModal(\'login\'); window.app.ui.hideModal()">Войти</button>'
+                '<button class="btn-primary" style="margin-top: 1rem;" onclick="window.app.auth.showAuthModal(\'login\'); window.app.ui.hideModal()">Войти</button>'
             );
             return;
         }
@@ -106,7 +106,6 @@ class CharityApp {
                     <input type="email" name="contact_email" placeholder="email@example.com" value="${this.currentUser.email || ''}">
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="window.app.ui.hideModal()">Отмена</button>
                     <button type="submit" class="btn-primary">Создать заявку</button>
                 </div>
             </form>

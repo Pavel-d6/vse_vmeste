@@ -1,0 +1,85 @@
+/* Страница о проекте */
+.about-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    margin-top: 1rem;
+    line-height: 1.8;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.about-content h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.about-content h2 {
+    text-align: center;
+    color: #667eea;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.about-content ul {
+    margin: 1rem 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.about-content li {
+    margin-bottom: 0.8rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.about-content p {
+    margin-bottom: 1rem;
+    color: #495057;
+}
+
+.description {
+    display: flex;
+}
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.step {
+    flex: 1;
+    min-width: 200px;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.step-number {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    background: linear-gradient(135deg, #3498db 0%, #8e44ad 100%);
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 30px;
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.step h3 {
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+.step p {
+    font-size: 1rem;
+    color: #7f8c8d;
+}

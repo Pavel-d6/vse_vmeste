@@ -294,11 +294,11 @@ class AuthManager {
         console.log(profileContent)
         profileContent.innerHTML = '<p style="text-align: center; padding: 2rem;">⏳ Загрузка данных...</p>';
         
-        let content = '';
+        let content = '<div class="container">';
         
         // Информация о пользователе
         content += `
-            <div class="profile-section">
+            <div class="user-data">
                 <h3>👤 Информация о профиле</h3>
                 <div class="profile-info">
                     <p><strong>Имя пользователя:</strong> ${this.app.currentUser.username}</p>
@@ -353,7 +353,7 @@ class AuthManager {
             `;
         }
         
-        profileContent.innerHTML = content;
+        profileContent.innerHTML = content+'</div>';
         console.log('✅ Интерфейс отрисован');
         console.log('='.repeat(50) + '\n');
     }
@@ -449,7 +449,7 @@ class AuthManager {
         console.log('🎨 Рендерим заявки пользователя. Количество:', requests.length);
         
         let html = `
-            <div class="profile-section">
+            <div class="user-data" style="text-align: center">
                 <h3>📋 Мои заявки на помощь</h3>
         `;
         
@@ -492,7 +492,7 @@ class AuthManager {
         console.log('🎨 Рендерим контент создателя фонда');
         
         let html = `
-            <div class="profile-section">
+            <div class="user-data">
                 <h3>🏛️ Мои фонды</h3>
         `;
         
@@ -500,7 +500,7 @@ class AuthManager {
             html += '<p style="color: #999;">У вас пока нет одобренных фондов</p>';
         } else {
             html += funds.map(fund => `
-                <div class="fund-item">
+                <div class="request-item">
                     <div class="fund-header">
                         <h4>${fund.name}</h4>
                         <span class="fund-status status-${fund.status}">${this.getStatusDisplay(fund.status)}</span>
@@ -512,7 +512,7 @@ class AuthManager {
             `).join('');
         }
         
-        html += '</div><div class="profile-section"><h3>💰 Мои сборы</h3>';
+        html += '</div><div class="user-data"><h3>💰 Мои сборы</h3>';
         
         if (!Array.isArray(fundraisers) || fundraisers.length === 0) {
             html += '<p style="color: #999;">У вас пока нет активных сборов</p>';
@@ -537,7 +537,7 @@ class AuthManager {
         console.log('🎨 Рендерим контент админа. Фондов:', pendingFunds.length);
         
         let html = `
-            <div class="profile-section">
+            <div class="user-data" style="text-align: center;">
                 <h3>⭐ Панель администратора</h3>
                 <h4 style="margin-top: 1rem;">Фонды на проверке (${pendingFunds.length})</h4>
         `;
@@ -547,7 +547,7 @@ class AuthManager {
         } else {
             console.log(pendingFunds)
             html += pendingFunds.map(fund => `
-                <div class="fund-item admin-fund">
+                <div class="request-item">
                     <h4>${fund.name}</h4>
                     <p>${fund.description}</p>
                     <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">👤 Создатель: <strong>${fund.creator_username}</strong></p>

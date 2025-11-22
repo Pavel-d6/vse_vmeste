@@ -47,7 +47,7 @@ class UIManager {
         if (!this.app.currentUser) {
             this.showModal('Требуется авторизация', 
                 '<p>Для подачи заявки на фонд необходимо войти в систему</p>' +
-                '<button class="btn-primary" onclick="window.app.auth.showAuthModal(\'login\'); window.app.ui.hideModal()">Войти</button>'
+                '<button class="btn-primary" style="margin-top: 1rem" onclick="window.app.auth.showAuthModal(\'login\'); window.app.ui.hideModal()">Войти</button>'
             );
             return;
         }
@@ -71,7 +71,6 @@ class UIManager {
                     <input type="email" name="contact_email" required>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="button" class="btn-secondary" onclick="window.app.ui.hideModal()">Отмена</button>
                     <button type="submit" class="btn-primary">Подать заявку</button>
                 </div>
             </form>
@@ -161,7 +160,6 @@ class UIManager {
                     ${fund.website ? `<p style="margin-bottom: 0.5rem;"><span style="color: #667eea;">🌐 Сайт фонда</span></p>` : ''}
                     ${fund.contact_email ? `<p style="margin-bottom: 0.5rem; color: #666;">📧 ${fund.contact_email}</p>` : ''}
                     <p style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">Создатель: ${fund.creator_username || 'Неизвестен'}</p>
-    
                 </div>
             </div>
         `).join('');
