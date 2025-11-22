@@ -507,27 +507,29 @@ class AuthManager {
                     </div>
                     <p>${fund.description}</p>
                     ${fund.status === 'rejected' ? `<p style="color: red; margin-top: 0.5rem;"><strong>Причина отклонения:</strong> ${fund.rejection_reason || 'Не указана'}</p>` : ''}
-                    ${fund.status === 'approved' ? `<button class="btn-secondary" onclick="window.app.showCreateFundraiserForm(${fund.id})" style="margin-top: 0.5rem;">➕ Создать сбор</button>` : ''}
                 </div>
             `).join('');
         }
+        // Кнопка сборов(вставить между 4 и 3 строкой сверху(нумерация с 1)) 
+        // ${fund.status === 'approved' ? `<button class="btn-secondary" onclick="window.app.showCreateFundraiserForm(${fund.id})" style="margin-top: 0.5rem;">➕ Создать сбор</button>` : ''}
         
-        html += '</div><div class="user-data"><h3>💰 Мои сборы</h3>';
+
+        // html += '</div><div class="user-data"><h3>💰 Мои сборы</h3>';
         
-        if (!Array.isArray(fundraisers) || fundraisers.length === 0) {
-            html += '<p style="color: #999;">У вас пока нет активных сборов</p>';
-        } else {
-            html += fundraisers.map(fr => `
-                <div class="fundraiser-item">
-                    <h4>${fr.title}</h4>
-                    <p style="color: #666;">${fr.fund_name}</p>
-                    <div class="progress-bar" style="background: #e9ecef; border-radius: 10px; height: 20px; margin: 1rem 0;">
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${fr.progress_percentage}%;"></div>
-                    </div>
-                    <p><strong>${fr.current_amount}</strong> ₽ из <strong>${fr.goal_amount}</strong> ₽</p>
-                </div>
-            `).join('');
-        }
+        // if (!Array.isArray(fundraisers) || fundraisers.length === 0) {
+        //     html += '<p style="color: #999;">У вас пока нет активных сборов</p>';
+        // } else {
+        //     html += fundraisers.map(fr => `
+        //         <div class="fundraiser-item">
+        //             <h4>${fr.title}</h4>
+        //             <p style="color: #666;">${fr.fund_name}</p>
+        //             <div class="progress-bar" style="background: #e9ecef; border-radius: 10px; height: 20px; margin: 1rem 0;">
+        //                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${fr.progress_percentage}%;"></div>
+        //             </div>
+        //             <p><strong>${fr.current_amount}</strong> ₽ из <strong>${fr.goal_amount}</strong> ₽</p>
+        //         </div>
+        //     `).join('');
+        // }
         
         html += '</div>';
         return html;
