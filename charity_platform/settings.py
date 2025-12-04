@@ -113,10 +113,10 @@ SIMPLE_JWT = {
 }
 
 # CORS (для production)
+DOMAIN = config('DOMAIN', default='localhost')
 CORS_ALLOWED_ORIGINS = [
-    f"https://{config('DOMAIN')}",
-    f"http://{config('DOMAIN')}",
-]
+    f"https://{DOMAIN}",
+    f"http://{DOMAIN}",]
 CORS_ALLOW_CREDENTIALS = True
 
 # Security settings для production
@@ -132,6 +132,13 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 
-STATICFILES_DIRS = [
-    BASE_DIR / "src",  # ← ваша папка с фронтендом
-]
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # Для продакшена используйте конкретные домены:
+    CORS_ALLOWED_ORIGINS = [
+        f"https://{DOMAIN}",
+        f"http://{DOMAIN}",
+    ]
+
+CORS_ALLOW_CREDENTIALS = True
