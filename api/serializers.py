@@ -54,16 +54,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
     password2 = serializers.CharField(write_only=True, min_length=6)
     account_type = serializers.CharField(write_only=True, required=False, default='user')
-    fund_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    fund_description = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'password', 'password2', 'account_type', 'fund_name', 'fund_description')
+        fields = ('username', 'email', 'password', 'password2', 'account_type')
 
     def validate(self, attrs):
-        print(f"🔍 Валидация регистрации. account_type: {attrs.get('account_type')}")
-        
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Пароли не совпадают"})
         
@@ -73,51 +69,30 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if CustomUser.objects.filter(email=attrs['email']).exists():
             raise serializers.ValidationError({"email": "Пользователь с таким email уже существует"})
         
+        # Проверяем тип аккаунта
         account_type = attrs.get('account_type', 'user')
         if account_type not in ['user', 'fund']:
             raise serializers.ValidationError({"account_type": "Неверный тип аккаунта"})
-        
-        # Для фонда требуем название и описание
-        if account_type == 'fund':
-            if not attrs.get('fund_name'):
-                raise serializers.ValidationError({"fund_name": "Укажите название фонда"})
-            if not attrs.get('fund_description'):
-                raise serializers.ValidationError({"fund_description": "Укажите описание фонда"})
             
         return attrs
 
     def create(self, validated_data):
-        print(f"✅ Создание пользователя...")
-        
         validated_data.pop('password2')
         account_type = validated_data.pop('account_type', 'user')
-        fund_name = validated_data.pop('fund_name', '')
-        fund_description = validated_data.pop('fund_description', '')
         
         # Создаем пользователя
         user = CustomUser.objects.create_user(**validated_data)
-        print(f"   Пользователь создан: {user.username}")
         
-        # ВАЖНО: Устанавливаем роль сразу при регистрации
+        # Если регистрация аккаунта фонда - автоматически создаем заявку на фонд
         if account_type == 'fund':
-            # Для аккаунта фонда сразу ставим роль fund_creator
-            user.role = 'fund_creator'
-            user.save()
-            print(f"   Установлена роль: fund_creator")
-            
-            # Создаем заявку на фонд
             CharityFund.objects.create(
-                name=fund_name or f"Фонд {user.username}",
-                description=fund_description or "Описание фонда",
+                name=f"Фонд {user.username}",
+                description="Описание фонда (заполните позже)",
                 contact_email=user.email,
                 creator=user,
                 status='pending'
             )
-            print(f"   Создана заявка на фонд: {fund_name}")
-        else:
-            user.role = 'user'
-            user.save()
-            print(f"   Установлена роль: user")
+            print(f"✅ Создана заявка на фонд для пользователя {user.username}")
         
         return user
     
